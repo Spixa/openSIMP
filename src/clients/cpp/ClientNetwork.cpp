@@ -18,18 +18,24 @@ void ClientNetwork::connect(const char* address, unsigned short port) {
 void ClientNetwork::receivePackets(sf::TcpSocket* socket) {
     while (true) {
         if (socket->receive(last_packet) == sf::Socket::Done) {
-            std::string received_string; std::string sender_address; unsigned short sender_port; int type_int;
-            last_packet >> type_int >> received_string  >> sender_address >> sender_port;
+            std::string received_string; std::string sender_address; unsigned short sender_port; int type_int, messagetype_int;
+            last_packet >> type_int >> messagetype_int >> received_string  >> sender_address >> sender_port;
 
-            if (static_cast<PacketType>(type_int) == PacketType::MessagePacket)
-                logl("<" << sender_address << ":" << sender_port << ">: " << received_string);
-            else if (static_cast<PacketType>(type_int) == PacketType::JoinPacket)
+            if (static_cast<PacketType>(type_int) == PacketType::MessagePacket) {
+                if (static_cast<MessageType>(messagetype_int) == MessageType::ChatMessage)
+                    logl("<" << sender_address << ":" << sender_port << ">: " << received_string);
+                else if (static_cast<MessageType>(messagetype_int) == MessageType::BroadcastMessage)
+                    logl("[Broadcast: " << sender_address << ":" << sender_port << "] " << received_string);
+            }
+            else if (static_cast<PacketType>(type_int) == PacketType::JoinPacket) {
                 logl(received_string << " has connected.");
-            else if (static_cast<PacketType>(type_int) == PacketType::LeavePacket)
-                logl(received_string<< " has disconnected.");
+            }
+            else if (static_cast<PacketType>(type_int) == PacketType::LeavePacket) {
+                logl(received_string << " has disconnected.");
+            }
 
 
-           // TODO: Make this a switch statement
+           // TODO: Make this a switch statement (nevermind)
         }
 
         std::this_thread::sleep_for((std::chrono::milliseconds)100);
@@ -48,12 +54,12 @@ void ClientNetwork::run() {
     while (true) {
         if (isConnected) {
             std::string user_input;
-            std::cout << "type > ";
+
             std::getline(std::cin, user_input);
-            std::cout << '\r';
+            
 
             sf::Packet reply_packet;
-            reply_packet << static_cast<int>(PacketType::MessagePacket) << user_input;
+            reply_packet << static_cast<int>(PacketType::MessagePacket) << static_cast<int>(MessageType::ChatMessage) << user_input;
 
             sendPacket(reply_packet);
         }

@@ -4,7 +4,7 @@
 #include "PacketType.h"
 
 ServerNetwork::ServerNetwork(unsigned short port, bool rawMode = false) : listen_port(port) {
-    logl("Server > Server has begun on port " + std::to_string(port));
+    logl("Server: Server has begun on port " + std::to_string(port));
 
     this->rawMode = rawMode;
     if (rawMode) logl("Warning > Raw mode is not recommended.");
@@ -16,7 +16,6 @@ ServerNetwork::ServerNetwork(unsigned short port, bool rawMode = false) : listen
 
 void ServerNetwork::connectClients(std::vector<sf::TcpSocket*>* client_array) {
     while (true) {
-        // From https://en.sfml-dev.org/forums/index.php?topic=15382.0
         sf::TcpSocket* new_client = new sf::TcpSocket();
         if (listener.accept(*new_client) == sf::Socket::Done) {
             new_client->setBlocking(false);
@@ -25,7 +24,9 @@ void ServerNetwork::connectClients(std::vector<sf::TcpSocket*>* client_array) {
             
             // New code; subject to change.
             sf::Packet joinPacket; 
-            joinPacket << static_cast<int>(PacketType::JoinPacket) << new_client->getRemoteAddress().toString() + ":" + std::to_string(new_client->getRemotePort());
+            joinPacket << static_cast<int>(PacketType::JoinPacket) << 
+            static_cast<int>(MessageType::NotMessageType) <<    
+            new_client->getRemoteAddress().toString() + ":" + std::to_string(new_client->getRemotePort());
             broadcastPacket(joinPacket,new_client->getRemoteAddress(),new_client->getRemotePort());
         }
         else {
@@ -40,8 +41,12 @@ void ServerNetwork::disconnectClient(sf::TcpSocket* socket_pointer, size_t posit
     logl("Server > Client " << socket_pointer->getRemoteAddress() << ":" << socket_pointer->getRemotePort() << " disconnected, removing");
 
     // New code; subject to change.
+    // Not message type: Not a message type, another type of packet
     sf::Packet leavePacket;
-    leavePacket << static_cast<int>(PacketType::LeavePacket) << socket_pointer->getRemoteAddress().toString() + ":" + std::to_string(socket_pointer->getRemotePort());
+    leavePacket << static_cast<int>(PacketType::LeavePacket) <<
+    static_cast<int>(MessageType::NotMessageType)
+    << socket_pointer->getRemoteAddress().toString() + ":" + std::to_string(socket_pointer->getRemotePort());
+
     broadcastPacket(leavePacket, socket_pointer->getRemoteAddress(), socket_pointer->getRemotePort());
 
 
@@ -91,25 +96,30 @@ void ServerNetwork::receivePacket(sf::TcpSocket* client, size_t iterator) {
     }
     else {
         if (packet.getDataSize() > 0) {
-            std::string received_message;
+            std::string received_message,log_packettype;
             PacketType type;
-            int type_int;
-            packet >> type_int >> received_message;
+            int type_int, messagetype_int;
+            packet >> type_int >> messagetype_int >> received_message;
             packet.clear();
 
             type = static_cast<PacketType>(type_int);
 
             // Handle packet type deprartment (beta code)
-            if (type == PacketType::MessagePacket)
+            if (type == PacketType::MessagePacket) {
                 packet << static_cast<int>(PacketType::MessagePacket)
-                << received_message 
-                << client->getRemoteAddress().toString() 
-                << client->getRemotePort();
-            if (type == PacketType::IdentifyPacket)
+                    << messagetype_int
+                    << received_message
+                    << client->getRemoteAddress().toString()
+                    << client->getRemotePort();
+                log_packettype = "MessagePacket";
+                
+            }
+            if (type == PacketType::IdentifyPacket) {
                 clientid_array[client_array.size()] = received_message;
-
+                log_packettype = "IdentityPacket";
+            }
             broadcastPacket(packet, client->getRemoteAddress(), client->getRemotePort());
-            logl(client->getRemoteAddress().toString() << ":" << client->getRemotePort() << " sent '" << received_message << "'");
+            logl(client->getRemoteAddress().toString() << ":" << client->getRemotePort() << " sent " << log_packettype << ": \"" << received_message << "\"");
         }
     }
 }

@@ -6,3 +6,10 @@ enum class PacketType {
 	JoinPacket = 2,
 	LeavePacket = 3
 };
+
+enum class MessageType {
+	NotMessageType,
+	BroadcastMessage,
+	ChatMessage,
+	CommandMessage
+};
