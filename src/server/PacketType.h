@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PACKETTYPE_H
+#define PACKETTYPE_H
 
 enum class PacketType {
 	MessagePacket = 0,
@@ -11,5 +12,8 @@ enum class MessageType {
 	NotMessageType,
 	BroadcastMessage,
 	ChatMessage,
-	CommandMessage
+	CommandMessage,
+	DirectMessage
 };
+
+#endif

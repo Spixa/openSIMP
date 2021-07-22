@@ -1,5 +1,6 @@
 #include "ClientNetwork.h"
 #include "PacketType.h"
+#include "Utils.hpp"
 
 ClientNetwork::ClientNetwork() {
     logl("Chat Client Started");
@@ -26,7 +27,11 @@ void ClientNetwork::receivePackets(sf::TcpSocket* socket) {
                     logl("<" << sender_address << ":" << sender_port << ">: " << received_string);
                 else if (static_cast<MessageType>(messagetype_int) == MessageType::BroadcastMessage)
                     logl("[Broadcast: " << sender_address << ":" << sender_port << "] " << received_string);
+                else if (static_cast<MessageType>(messagetype_int) == MessageType::DirectMessage) {
+                    logl("[Directed from " << sender_address << "] " << received_string);
+                }
             }
+            
             else if (static_cast<PacketType>(type_int) == PacketType::JoinPacket) {
                 logl(received_string << " has connected.");
             }
@@ -54,14 +59,24 @@ void ClientNetwork::run() {
     while (true) {
         if (isConnected) {
             std::string user_input;
-
+            std::string args[512];
             std::getline(std::cin, user_input);
             
 
             sf::Packet reply_packet;
-            reply_packet << static_cast<int>(PacketType::MessagePacket) << static_cast<int>(MessageType::ChatMessage) << user_input;
-
+            Utils::lexer(user_input,args,' ');
+            if (args[0] == "/broadcast") {
+                std::string new_message;
+                for (int i=1; i < 256;i++)
+                    new_message += args[i] +  " ";
+             
+                reply_packet << static_cast<int>(PacketType::MessagePacket) << static_cast<int>(MessageType::BroadcastMessage) << new_message;
+            } else
+                reply_packet << static_cast<int>(PacketType::MessagePacket) << static_cast<int>(MessageType::ChatMessage) << user_input;
+            
             sendPacket(reply_packet);
         }
     }
 }
+
+

@@ -55,6 +55,17 @@ void ServerNetwork::disconnectClient(sf::TcpSocket* socket_pointer, size_t posit
     client_array.erase(client_array.begin() + position);
 }
 
+void ServerNetwork::sendPacket(sf::Packet& packet,sf::IpAddress receiver, unsigned short port) {
+        for (size_t iterator = 0; iterator < client_array.size(); iterator++) {
+        sf::TcpSocket* client = client_array[iterator];
+        if (client->getRemoteAddress() == receiver || client->getRemotePort() == port) {
+            if (client->send(packet) != sf::Socket::Done) {
+                logl("Could not send packet on broadcast");
+            }
+        }
+    }
+}
+
 void ServerNetwork::broadcastPacket(sf::Packet& packet, sf::IpAddress exclude_address, unsigned short port) {
     for (size_t iterator = 0; iterator < client_array.size(); iterator++) {
         sf::TcpSocket* client = client_array[iterator];
@@ -100,6 +111,16 @@ void ServerNetwork::receivePacket(sf::TcpSocket* client, size_t iterator) {
             PacketType type;
             int type_int, messagetype_int;
             packet >> type_int >> messagetype_int >> received_message;
+            if (received_message == "") {
+                logl("Declined someone to send null message.");
+                sf::Packet failPacket;
+                failPacket << static_cast<int>(PacketType::MessagePacket) << static_cast<int>(MessageType::DirectMessage) <<
+                "Bruh stop sending empty shit, its annoying asf"
+                << "Server"
+                << listener.getLocalPort();
+                sendPacket(failPacket, client->getRemoteAddress(),client->getRemotePort());
+                return;
+            }
             packet.clear();
 
             type = static_cast<PacketType>(type_int);

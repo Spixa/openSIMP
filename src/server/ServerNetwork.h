@@ -1,5 +1,6 @@
+#ifndef SERVERNETWORK_H
+#define SERVERNETWORK_H
 
-#pragma once
 #include <iostream>
 #include <thread>
 #include <vector>
@@ -28,9 +29,12 @@ public:
     void receivePacket(sf::TcpSocket*, size_t);
     void receiveRawData(sf::TcpSocket*, size_t);
 
+    void sendPacket(sf::Packet&, sf::IpAddress, unsigned short);
     void broadcastPacket(sf::Packet&, sf::IpAddress, unsigned short);
     void broadcastRawData(const char*, sf::IpAddress, unsigned short);
 
     void managePackets();
     void run();
 };
+
+#endif
