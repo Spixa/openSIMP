@@ -24,8 +24,8 @@ void ServerNetwork::connectClients(std::vector<sf::TcpSocket*>* client_array) {
             
             // New code; subject to change.
             sf::Packet joinPacket; 
-            joinPacket << static_cast<int>(PacketType::JoinPacket) << 
-            static_cast<int>(MessageType::NotMessageType) <<    
+            joinPacket << static_cast<sf::Uint8>(PacketType::JoinPacket) << 
+            static_cast<sf::Uint8>(MessageType::NotMessageType) <<    
             new_client->getRemoteAddress().toString() + ":" + std::to_string(new_client->getRemotePort());
             broadcastPacket(joinPacket,new_client->getRemoteAddress(),new_client->getRemotePort());
         }
@@ -43,8 +43,8 @@ void ServerNetwork::disconnectClient(sf::TcpSocket* socket_pointer, size_t posit
     // New code; subject to change.
     // Not message type: Not a message type, another type of packet
     sf::Packet leavePacket;
-    leavePacket << static_cast<int>(PacketType::LeavePacket) <<
-    static_cast<int>(MessageType::NotMessageType)
+    leavePacket << static_cast<sf::Uint8>(PacketType::LeavePacket) <<
+    static_cast<sf::Uint8>(MessageType::NotMessageType)
     << socket_pointer->getRemoteAddress().toString() + ":" + std::to_string(socket_pointer->getRemotePort());
 
     broadcastPacket(leavePacket, socket_pointer->getRemoteAddress(), socket_pointer->getRemotePort());
@@ -109,12 +109,12 @@ void ServerNetwork::receivePacket(sf::TcpSocket* client, size_t iterator) {
         if (packet.getDataSize() > 0) {
             std::string received_message,log_packettype;
             PacketType type;
-            int type_int, messagetype_int;
+            sf::Uint8 type_int, messagetype_int;
             packet >> type_int >> messagetype_int >> received_message;
             if (received_message == "") {
                 logl("Declined someone to send null message.");
                 sf::Packet failPacket;
-                failPacket << static_cast<int>(PacketType::MessagePacket) << static_cast<int>(MessageType::DirectMessage) <<
+                failPacket << static_cast<sf::Uint8>(PacketType::MessagePacket) << static_cast<sf::Uint8>(MessageType::DirectMessage) <<
                 "Bruh stop sending empty shit, its annoying asf"
                 << "Server"
                 << listener.getLocalPort();
@@ -127,7 +127,7 @@ void ServerNetwork::receivePacket(sf::TcpSocket* client, size_t iterator) {
 
             // Handle packet type deprartment (beta code)
             if (type == PacketType::MessagePacket) {
-                packet << static_cast<int>(PacketType::MessagePacket)
+                packet << static_cast<sf::Uint8>(PacketType::MessagePacket)
                     << messagetype_int
                     << received_message
                     << client->getRemoteAddress().toString()

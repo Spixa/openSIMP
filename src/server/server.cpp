@@ -1,5 +1,6 @@
 
 #include "ServerNetwork.h"
+
 #include <iostream>
 
 #define logl(x) std::cout << x << std::endl
