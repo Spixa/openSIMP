@@ -5,11 +5,8 @@
 #include <thread>
 #include <vector>
 #include <chrono>
-#include <string>
+#include <string.h>
 #include <SFML/Network.hpp>
-#include <memory.h>
-#include <cstring>
-#include <map>
 
 #define MAX_RAW_DATA 256 //Max bytes supported on Raw Data mode
 
@@ -35,8 +32,6 @@ public:
     void sendPacket(sf::Packet&, sf::IpAddress, unsigned short);
     void broadcastPacket(sf::Packet&, sf::IpAddress, unsigned short);
     void broadcastRawData(const char*, sf::IpAddress, unsigned short);
-
-    
 
     void managePackets();
     void run();

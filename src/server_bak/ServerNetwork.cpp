@@ -95,18 +95,7 @@ void ServerNetwork::receiveRawData(sf::TcpSocket* client, size_t iterator) {
         disconnectClient(client, iterator);
     }
     else if (received_bytes > 0) {
-        std::stringstream sending_string;
-        sending_string << received_data << "\x00\x09\x00" << client->getRemoteAddress().toString() << "\x00\x09\x00" << std::to_string(client->getRemotePort());
-
-        std::string convertedSS = sending_string.str();
-       
-
-        int n = convertedSS.length();
-        char char_array[256];
-        strcpy(char_array,convertedSS.c_str());
-
-
-        broadcastRawData(char_array, client->getRemoteAddress(), client->getRemotePort());
+        broadcastRawData(received_data, client->getRemoteAddress(), client->getRemotePort());
         logl(client->getRemoteAddress().toString() << ":" << client->getRemotePort() << " '" << received_data << "'");
     }
 }

@@ -47,6 +47,23 @@ void ClientNetwork::receivePackets(sf::TcpSocket* socket) {
     }
 }
 
+void ClientNetwork::receive(sf::TcpSocket* socket) {
+    while (true) {
+        if (socket->receive(buffer,sizeof(buffer),received) == sf::Socket::Done) {
+            
+        }
+
+        std::this_thread::sleep_for((std::chrono::milliseconds)100);
+    }
+}
+
+void ClientNetwork::send(char* sent) {
+    if (sent != "" && socket.send(sent,sizeof(sent))); {
+        logl("Could not send data");
+    }
+
+}
+
 void ClientNetwork::sendPacket(sf::Packet& packet) {
     if (packet.getDataSize() > 0 && socket.send(packet) != sf::Socket::Done) {
         logl("Could not send packet");
@@ -54,27 +71,20 @@ void ClientNetwork::sendPacket(sf::Packet& packet) {
 }
 
 void ClientNetwork::run() {
-    std::thread reception_thred(&ClientNetwork::receivePackets, this, &socket);
+    std::thread reception_thred(&ClientNetwork::receive, this, &socket);
 
     while (true) {
         if (isConnected) {
             std::string user_input;
             std::string args[512];
             std::getline(std::cin, user_input);
-            
+                    
+        
+            int n = user_input.length();
+            char char_array[n + 1];
+            std::strcpy(char_array, user_input.c_str());
 
-            sf::Packet reply_packet;
-            Utils::lexer(user_input,args,' ');
-            if (args[0] == "/broadcast") {
-                std::string new_message;
-                for (int i=1; i < 256;i++)
-                    new_message += args[i] +  " ";
-             
-                reply_packet << static_cast<unsigned short>(PacketType::MessagePacket) << static_cast<unsigned short>(MessageType::BroadcastMessage) << new_message;
-            } else
-                reply_packet << static_cast<unsigned short>(PacketType::MessagePacket) << static_cast<unsigned short>(MessageType::ChatMessage) << user_input;
-            
-            sendPacket(reply_packet);
+            send(char_array);
         }
     }
 }
