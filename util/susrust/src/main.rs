@@ -1,33 +1,14 @@
 use std::io::prelude::*;
 use std::net::{
-    TcpStream,
     IpAddr,
     Ipv4Addr,
     SocketAddr,
 };
 
-pub enum PacketType {
-    MessagePacket,
-    IdentifyPacket,
-    JoinPacket,
-    LeavePacket,
-}
-
-pub enum MessageType {
-    NotMessageType,
-    BroadcastMessage,
-    ChatMessage,
-    CommandMessage,
-    DirectMessage,
-}
-
 pub mod network {
-    use std::io::prelude::*;
     use std::io;
     use std::net::{
         TcpStream,
-        IpAddr,
-        Ipv4Addr,
         SocketAddr,
     };
 
