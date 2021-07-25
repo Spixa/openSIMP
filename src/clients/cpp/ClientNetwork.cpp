@@ -50,25 +50,27 @@ void ClientNetwork::receivePackets(sf::TcpSocket* socket) {
 void ClientNetwork::receive(sf::TcpSocket* socket) {
     while (true) {
         if (socket->receive(buffer,sizeof(buffer),received) == sf::Socket::Done) {
-            
+            logl(received << " bytes were received\n\tContent: " << buffer);
         }
+
 
         std::this_thread::sleep_for((std::chrono::milliseconds)100);
     }
 }
 
-void ClientNetwork::send(char* sent) {
-    if (sent != "" && socket.send(sent,sizeof(sent))); {
+void ClientNetwork::send(const char* sent) {
+    if (socket.send(sent,sizeof(sent)) != sf::Socket::Done) {
         logl("Could not send data");
     }
 
 }
 
-void ClientNetwork::sendPacket(sf::Packet& packet) {
-    if (packet.getDataSize() > 0 && socket.send(packet) != sf::Socket::Done) {
-        logl("Could not send packet");
-    }
-}
+// void ClientNetwork::sendPacket(sf::Packet& packet) {
+    
+//     if (packet.getDataSize() > 0 && socket.send(packet) != sf::Socket::Done) {
+//         logl("Could not send packet");
+//     }
+// }
 
 void ClientNetwork::run() {
     std::thread reception_thred(&ClientNetwork::receive, this, &socket);
@@ -81,7 +83,11 @@ void ClientNetwork::run() {
                     
         
             int n = user_input.length();
-            char char_array[n + 1];
+            char char_array[256];
+
+            for (int i = 0; i < 256;i++)
+                char_array[i] = '\x00';
+
             std::strcpy(char_array, user_input.c_str());
 
             send(char_array);
