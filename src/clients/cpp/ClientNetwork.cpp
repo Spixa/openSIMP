@@ -19,7 +19,7 @@ void ClientNetwork::connect(const char* address, unsigned short port) {
 void ClientNetwork::receivePackets(sf::TcpSocket* socket) {
     while (true) {
         if (socket->receive(last_packet) == sf::Socket::Done) {
-            std::string received_string; std::string sender_address; unsigned short sender_port; sf::Uint8 type_int, messagetype_int;
+            std::string received_string; std::string sender_address; unsigned short sender_port; unsigned char type_int, messagetype_int;
             last_packet >> type_int >> messagetype_int >> received_string  >> sender_address >> sender_port;
 
             if (static_cast<PacketType>(type_int) == PacketType::MessagePacket) {
@@ -70,9 +70,9 @@ void ClientNetwork::run() {
                 for (int i=1; i < 256;i++)
                     new_message += args[i] +  " ";
              
-                reply_packet << static_cast<sf::Uint8>(PacketType::MessagePacket) << static_cast<sf::Uint8>(MessageType::BroadcastMessage) << new_message;
+                reply_packet << static_cast<unsigned char>(PacketType::MessagePacket) << static_cast<unsigned char>(MessageType::BroadcastMessage) << new_message;
             } else
-                reply_packet << static_cast<sf::Uint8>(PacketType::MessagePacket) << static_cast<sf::Uint8>(MessageType::ChatMessage) << user_input;
+                reply_packet << static_cast<unsigned char>(PacketType::MessagePacket) << static_cast<unsigned char>(MessageType::ChatMessage) << user_input;
             
             sendPacket(reply_packet);
         }
