@@ -68,7 +68,17 @@ void ServerNetwork::broadcastRawData(const char* data, sf::IpAddress exclude_add
     for (size_t iterator = 0; iterator < client_array.size(); iterator++) {
         sf::TcpSocket* client = client_array[iterator];
         if (client->getRemoteAddress() != exclude_address || client->getRemotePort() != port) {
-            if (client->send(data, 256) != sf::Socket::Done) {
+	    
+	    size_t counter = 0;
+	    while (true) {
+	    	if (data[counter] != '\0') {
+		    counter++;
+		} else {
+		    break;
+		}
+	    }
+
+            if (client->send(data, counter) != sf::Socket::Done) {
                 logl("Could not send packet on broadcast");
             }
         }
@@ -84,18 +94,18 @@ void ServerNetwork::receiveRawData(sf::TcpSocket* client, size_t iterator) {
     }
     else if (received_bytes > 0) {
         std::stringstream sending_string;
-        sending_string << received_data << "\x00\x09\x00" << client->getRemoteAddress().toString() << "\x00\x09\x00" << std::to_string(client->getRemotePort());
+        sending_string << received_data /*<< "\x01\x09\x01"*/ << client->getRemoteAddress().toString() /*<< "\x01\x09\x01"*/ << std::to_string(client->getRemotePort());
 
         std::string convertedSS = sending_string.str();
        
 
         int n = convertedSS.length();
-        char char_array[256];
+        char char_array[256] = {'\0'};
         strcpy(char_array,convertedSS.c_str());
 
         broadcastRawData(char_array, client->getRemoteAddress(), client->getRemotePort());
         
-        logl(client->getRemoteAddress().toString() << ":" << client->getRemotePort() << " sent '" << received_data << "'");
+        logl(client->getRemoteAddress().toString() << ":" << client->getRemotePort() << " sent '" << char_array << "'");
    
     } 
 }

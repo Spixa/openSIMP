@@ -81,12 +81,8 @@ void ClientNetwork::run() {
             std::string args[512];
             std::getline(std::cin, user_input);
                     
-        
-            int n = user_input.length();
-            char char_array[256];
-
-            for (int i = 0; i < 256;i++)
-                char_array[i] = '\x00';
+            //int n = user_input.length();
+            char char_array[256] = {'\0'};
 
             std::strcpy(char_array, user_input.c_str());
 

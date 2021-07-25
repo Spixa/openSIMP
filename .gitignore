@@ -3,3 +3,6 @@
 *.out
 *.dll
 *.a
+src/susserver
+src/susclient
+util/susrust/target
