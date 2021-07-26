@@ -49,17 +49,21 @@ void ClientNetwork::receivePackets(sf::TcpSocket* socket) {
 
 void ClientNetwork::receive(sf::TcpSocket* socket) {
     while (true) {
+
         if (socket->receive(buffer,sizeof(buffer),received) == sf::Socket::Done) {
-            logl(received << " bytes were received\n\tContent: " << buffer);
+            logl(received << " bytes were received");
+            log("\tReceived: ");
+
+            for (size_t r = 0; r < received; r++)
+                log(buffer[r]);
+            logl("");
         }
-
-
         std::this_thread::sleep_for((std::chrono::milliseconds)100);
     }
 }
 
-void ClientNetwork::send(const char* sent) {
-    if (socket.send(sent,sizeof(sent)) != sf::Socket::Done) {
+void ClientNetwork::send(std::string sent) {
+    if (sent.length() > 0 && socket.send(sent.c_str(),sent.length() + 1) != sf::Socket::Done) {
         logl("Could not send data");
     }
 
@@ -80,13 +84,8 @@ void ClientNetwork::run() {
             std::string user_input;
             std::string args[512];
             std::getline(std::cin, user_input);
-                    
-            //int n = user_input.length();
-            char char_array[256] = {'\0'};
 
-            std::strcpy(char_array, user_input.c_str());
-
-            send(char_array);
+            send(user_input);
         }
     }
 }

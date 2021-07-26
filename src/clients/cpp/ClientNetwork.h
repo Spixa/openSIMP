@@ -24,7 +24,7 @@ public:
     void connect(const char*, unsigned short);
     void receivePackets(sf::TcpSocket*);
     void receive(sf::TcpSocket*);
-    void send(const char*);
+    void send(std::string);
     void sendPacket(sf::Packet&);
     void run();
 };

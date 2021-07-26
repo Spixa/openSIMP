@@ -23,22 +23,20 @@ class ServerNetwork {
     std::vector<std::string> clientid_array;
 
     unsigned short listen_port;
-    bool rawMode = false;
 public:
-    ServerNetwork(unsigned short, bool);
+    ServerNetwork(unsigned short);
+    // Connect & disconnect
     void connectClients(std::vector<sf::TcpSocket*>*);
     void disconnectClient(sf::TcpSocket*, size_t);
 
-    void receivePacket(sf::TcpSocket*, size_t);
-    void receiveRawData(sf::TcpSocket*, size_t);
+    // Receive & send
+    void receive(sf::TcpSocket*, size_t);
+    void broadcast(const char*, sf::IpAddress, unsigned short);
 
-    void sendPacket(sf::Packet&, sf::IpAddress, unsigned short);
-    void broadcastPacket(sf::Packet&, sf::IpAddress, unsigned short);
-    void broadcastRawData(const char*, sf::IpAddress, unsigned short);
+    bool send(const char*, sf::TcpSocket*);
 
-    
-
-    void managePackets();
+    // Core
+    void manage();
     void run();
 };
 
