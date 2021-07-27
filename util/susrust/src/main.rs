@@ -24,12 +24,27 @@ fn main() {
     if let Ok(mut server_connection) = network::connect(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 37549)) {
         println!("connected");
         match std::env::args().nth(1).unwrap().as_str() {
-            "receive" => {
-                let mut buf: Vec<u8> = vec![0; 4096];
-                let bytes_read = server_connection.read(&mut buf).unwrap();
-                buf.truncate(bytes_read);
+            "rawget" => {
+                loop {
+                    let mut buf: Vec<u8> = vec![0; 4096];
+                    let bytes_read = server_connection.read(&mut buf).unwrap();
+                    buf.truncate(bytes_read);
+                    if bytes_read == 0 {
+                        println!("connection error occured, 0 bytes were read, disconnecting...");
+                        std::process::exit(0);
+                    }
 
-                println!("read {} bytes: {:x?}", bytes_read, buf);
+                    println!("read {} bytes: {:x?}", bytes_read, buf);
+
+                    // unsafe code
+                    // do not use this anywhere
+                    // i see you looking at this still
+                    // go away
+                    // bad code
+                    unsafe { 
+                        println!("[!UNSAFE!] unchecked utf8 conversion of bytes: {} [!UNSAFE!]", std::str::from_utf8_unchecked(&buf));
+                    }
+                }
             },
             "send" => {
                 let string = std::env::args().nth(2).unwrap(); // for readability purposes only
