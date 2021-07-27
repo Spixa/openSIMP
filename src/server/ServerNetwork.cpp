@@ -31,8 +31,21 @@ void ServerNetwork::connectClients(std::vector<sf::TcpSocket*>* client_array) {
     }
 }
 
-void ServerNetwork::disconnectClient(sf::TcpSocket* socket_pointer, size_t position) {
+void ServerNetwork::disconnectClient(sf::TcpSocket* socket_pointer, size_t position, DisconnectReason reason) {
     logl("Server > " << socket_pointer->getRemoteAddress() << ":" << socket_pointer->getRemotePort() << " disconnected.");
+
+    std::string joinMessage = socket_pointer->getRemoteAddress().toString() + ":" + std::to_string(socket_pointer->getRemotePort()) + " disconnected for ";
+
+    switch (reason) {
+        case DisconnectReason::DisconnectLeave:
+            joinMessage += "Generic Leave Activity";
+        break;
+        case DisconnectReason::DisconnectKick:
+            joinMessage += "Nuisance Activities";
+        break;
+    }
+
+    broadcast(joinMessage.c_str(),socket_pointer->getRemoteAddress(), socket_pointer->getRemotePort());
 
     socket_pointer->disconnect();
     delete(socket_pointer);
@@ -74,14 +87,14 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
     char received_data[MAX_RAW_DATA]; size_t received_bytes;
     memset(received_data, 0, sizeof(received_data));
     if (client->receive(received_data, sizeof(received_data), received_bytes) == sf::Socket::Disconnected) {
-        disconnectClient(client, iterator);
+        disconnectClient(client, iterator,DisconnectReason::DisconnectLeave);
     }
     else if (received_bytes > 0) {
 
         if (!check(received_data)) {
             logl("Invalid send from " << client->getRemoteAddress() << ":" << client->getRemotePort());
             logl("Nuisance abolished.");
-            disconnectClient(client,iterator);
+            disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
             return;
         } 
 

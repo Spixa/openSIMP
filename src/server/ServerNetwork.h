@@ -17,6 +17,11 @@
 #define log(x) std::cout << x
 #define PREFIX "[Server]"
 
+enum class DisconnectReason {
+    DisconnectLeave = 0,
+    DisconnectKick = 1
+};
+
 class ServerNetwork {
     sf::TcpListener listener;
     std::vector<sf::TcpSocket*> client_array;
@@ -27,7 +32,7 @@ public:
     ServerNetwork(unsigned short);
     // Connect & disconnect
     void connectClients(std::vector<sf::TcpSocket*>*);
-    void disconnectClient(sf::TcpSocket*, size_t);
+    void disconnectClient(sf::TcpSocket*, size_t, DisconnectReason);
 
     // Receive & send
     void receive(sf::TcpSocket*, size_t);
