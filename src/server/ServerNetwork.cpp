@@ -8,6 +8,12 @@ ServerNetwork::ServerNetwork(unsigned short port) : listen_port(port) {
     if (listener.listen(listen_port) != sf::Socket::Done) {
         logl("Error > Could not establish listener.");
     }
+    init();
+}
+
+void ServerNetwork::init() {
+
+
 }
 
 void ServerNetwork::connectClients(std::vector<sf::TcpSocket*>* client_array) {
@@ -105,7 +111,15 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
             logl("Nuisance abolished.");
             disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
             return;
-        } 
+        }
+
+        if (received_bytes >= 256) {
+            logl("Invalid send from " << client->getRemoteAddress() << ":" << client->getRemotePort());
+            logl("Nuisance abolished FOR SENDING TOO MUCH DATA. HOLY SHEEEEEEEESH");
+            disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
+            return;
+        }
+        
         std::stringstream sending_string;      
 
         // Handle receives
@@ -121,6 +135,7 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
             return;
         }
 
+        updateObjs(received_data);
         
         std::string convertedSS = sending_string.str();
         char char_array[256] = {'\0'};
@@ -162,6 +177,9 @@ bool ServerNetwork::handleNick(char* received_data,std::stringstream& sending_st
     return true;
 }
 
+void ServerNetwork::updateObjs(const char* data) {
+
+}
 
 void ServerNetwork::manage() {
     while (true) {
@@ -175,6 +193,7 @@ void ServerNetwork::manage() {
 
 void ServerNetwork::run() {
     std::thread connetion_thread(&ServerNetwork::connectClients, this, &client_array);
+
 
     // Manage thread for receiving and sending
     manage();

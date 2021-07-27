@@ -10,8 +10,10 @@
 #include <memory.h>
 #include <cstring>
 #include <map>
+#include <unordered_map>
 
 #include "ChatHandler.h"
+#include "ServerObject.h"
 #define MAX_RAW_DATA 256 //Max bytes supported on Raw Data mode
 
 #define logl(x) std::cout << x << std::endl
@@ -36,8 +38,12 @@ class ServerNetwork {
     std::vector<sf::TcpSocket*> client_array;
     std::vector<std::string> clientid_array;
     unsigned short listen_port;
+
+    
+
 public:
     ServerNetwork(unsigned short);
+    void init();
     // Connect & disconnect
     void connectClients(std::vector<sf::TcpSocket*>*);
     void disconnectClient(sf::TcpSocket*, size_t, DisconnectReason);
@@ -49,6 +55,7 @@ public:
     bool send(const char*, size_t counter, sf::TcpSocket*);
     bool check(char*);
 
+    void updateObjs(const char* );
     
     bool handleSend(char*,std::stringstream&,sf::TcpSocket*, size_t);
     bool handleNick(char*,std::stringstream&,sf::TcpSocket*, size_t);

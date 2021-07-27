@@ -1,3 +1,6 @@
+#ifndef SERVEROBJECT_H
+#define SERVEROBJECT_H
+
 #include <sstream>
 #include <functional>
 #include <list>
@@ -37,7 +40,11 @@ private:
     enum class Type { NoInit, Bool, Int, Float, String} m_type;
 };
 
+namespace simp {
+	class updater_void {
 
+	};
+};
 
 class ServerObject {
 public:
@@ -108,11 +115,13 @@ public:
 	void clear();
 	static void invokePreupdateActions();
 	virtual void start();
-    virtual void update();
+    virtual void update(Property&);
 
 	void enable();
 	void disable();
     bool isEnabled() const;
+
+	void steadySetup() {}
 protected:
     void onActivated() {}
 private:
@@ -125,4 +134,13 @@ private:
 	std::list<ServerObject*> m_objects;
 	bool m_enable;
 
+	void issueNewServerObjectError(std::string reads) {
+		std::cout << "Failure fetching server object \"" << m_name << "\".\n\t" << reads << std::endl;
+	}
+
+	void failObject() {}
+
 };
+
+
+#endif

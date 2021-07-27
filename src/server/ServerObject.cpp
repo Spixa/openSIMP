@@ -195,7 +195,7 @@ ServerObject* ServerObject::getParent() const
     return m_parent;
 }
 
-void ServerObject::update()
+void ServerObject::update(Property& property)
 {
     if (isEnabled())
     {
@@ -208,7 +208,7 @@ void ServerObject::update()
 
         for (auto& obj : m_objects)
             if (obj->isEnabled())
-                obj->update();
+                obj->update(property);
     }
 }
 
@@ -322,6 +322,7 @@ void ServerObject::moveToBack()
             auto tmp = *it;
             it = list->erase(it);
             list->push_front(tmp);
+            
         };
         m_preupdate_actions.push_back(move_to_back_action);
     }
