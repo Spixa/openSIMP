@@ -11,6 +11,7 @@
 #include <cstring>
 #include <map>
 
+#include "ChatHandler.h"
 #define MAX_RAW_DATA 256 //Max bytes supported on Raw Data mode
 
 #define logl(x) std::cout << x << std::endl
@@ -47,6 +48,10 @@ public:
 
     bool send(const char*, size_t counter, sf::TcpSocket*);
     bool check(char*);
+
+    
+    bool handleSend(char*,std::stringstream&,sf::TcpSocket*, size_t);
+    bool handleNick(char*,std::stringstream&,sf::TcpSocket*, size_t);
 
     // Core
     void manage();

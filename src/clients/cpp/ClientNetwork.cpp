@@ -48,7 +48,11 @@ void ClientNetwork::send(std::string sent) {
 void ClientNetwork::run() {
     std::thread reception_thred(&ClientNetwork::receive, this, &socket);
 
-    send("3spixa");
+    log("Username: ");
+    std::string name_input;
+    std::getline(std::cin, name_input);
+
+    send("3" + name_input);
 
     while (true) {
         if (isConnected) {

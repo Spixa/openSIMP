@@ -106,42 +106,15 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
             disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
             return;
         } 
+        std::stringstream sending_string;      
 
-        std::stringstream sending_string;
-        
-
-        if (strcmp(received_data,"0exit") == 0) {
-            
-            exit(EXIT_SUCCESS);
-        }
-
+        // Handle receives
         if ((strncmp("0",received_data,1) == 0)) {
-            memmove(received_data, received_data+1, strlen (received_data+1) + 1);
-           if (clientid_array[iterator] != "\x96")
-                sending_string << "0" << "\x01" << received_data << "\x01" << clientid_array[iterator];
-            else {
-                //sending_string << "0" << "\x01" << received_data << "\x01" << client->getRemoteAddress().toString() << "\x01" << std::to_string(client->getRemotePort());
-                disconnectClient(client,iterator,DisconnectReason::DisconnectUnnamed);
-                return;
-            }
+            if(!handleSend(received_data,sending_string,client,iterator)) return;
         } else
         if ((strncmp("3",received_data,1) == 0)) {
-            memmove(received_data, received_data+1, strlen (received_data+1) + 1);
+            if(!handleNick(received_data,sending_string,client,iterator)) return;
             
-            // Check whether name already exists
-            for(auto i : clientid_array) {
-                if (received_data == i) {
-                    
-                    disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
-                    logl("\tAn attempt of connection with an already online alias was blocked.");
-                    return;
-                }
-            } 
-                
-            sending_string << "3" << "\x01" << received_data << client->getRemoteAddress().toString() << "\x01" << std::to_string(client->getRemotePort());
-            logl(client->getRemoteAddress().toString() << ":" << std::to_string(client->getRemotePort()) << " has been aliased to " << received_data );
-            
-            clientid_array[iterator] = received_data;
         }
         else {
             disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
@@ -155,7 +128,40 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
         broadcast(char_array, client->getRemoteAddress(), client->getRemotePort());
         logl(client->getRemoteAddress().toString() << ":" << client->getRemotePort() << " sent '" << char_array << "'");
     }
+
 }
+
+bool ServerNetwork::handleSend(char* received_data,std::stringstream& sending_string,sf::TcpSocket* client, size_t iterator) {
+    memmove(received_data, received_data+1, strlen (received_data+1) + 1);
+    if (clientid_array[iterator] != "\x96")
+        sending_string << "0" << "\x01" << received_data << "\x01" << clientid_array[iterator];
+    else {
+        disconnectClient(client,iterator,DisconnectReason::DisconnectUnnamed);
+        return false;
+    }
+    
+    // Normal
+    return true;
+}
+
+bool ServerNetwork::handleNick(char* received_data,std::stringstream& sending_string,sf::TcpSocket* client, size_t iterator) {
+    memmove(received_data, received_data+1, strlen (received_data+1) + 1);
+    // Check whether name already exists
+    for(auto i : clientid_array) {
+        if (received_data == i) {        
+            disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
+            logl("\tAn attempt of connection with an already online alias was blocked.");
+            return false;
+        }
+    } 
+    sending_string << "3" << "\x01" << received_data << "'\x01" << client->getRemoteAddress().toString() << "\x01" << std::to_string(client->getRemotePort());
+    logl(client->getRemoteAddress().toString() << ":" << std::to_string(client->getRemotePort()) << " has been aliased to " << received_data );
+    clientid_array[iterator] = received_data;
+
+    // Normal
+    return true;
+}
+
 
 void ServerNetwork::manage() {
     while (true) {
@@ -164,6 +170,7 @@ void ServerNetwork::manage() {
         
         std::this_thread::sleep_for((std::chrono::milliseconds)100);
     }
+
 }
 
 void ServerNetwork::run() {
