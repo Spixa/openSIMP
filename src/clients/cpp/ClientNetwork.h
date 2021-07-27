@@ -13,19 +13,14 @@
 
 class ClientNetwork {
     sf::TcpSocket socket;
-    sf::Packet last_packet;
-
     char buffer[256];
     std::size_t received;
-
     bool isConnected = false;
 public:
     ClientNetwork();
     void connect(const char*, unsigned short);
-    void receivePackets(sf::TcpSocket*);
     void receive(sf::TcpSocket*);
     void send(std::string);
-    void sendPacket(sf::Packet&);
     void run();
 };
 

@@ -33,7 +33,8 @@ public:
     void receive(sf::TcpSocket*, size_t);
     void broadcast(const char*, sf::IpAddress, unsigned short);
 
-    bool send(const char*, sf::TcpSocket*);
+    bool send(const char*, size_t counter, sf::TcpSocket*);
+    bool check(char*);
 
     // Core
     void manage();

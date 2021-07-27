@@ -6,3 +6,4 @@
 src/susserver
 src/susclient
 util/susrust/target
+util/susrust-fltk
