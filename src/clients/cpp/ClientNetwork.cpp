@@ -1,5 +1,5 @@
 #include "ClientNetwork.h"
-#include "PacketType.h"
+
 #include "Utils.hpp"
 
 ClientNetwork::ClientNetwork() {
@@ -38,6 +38,7 @@ void ClientNetwork::receive(sf::TcpSocket* socket) {
 }
 
 void ClientNetwork::send(std::string sent) {
+    
     if (sent.length() > 0 && socket.send(sent.c_str(),sent.length() + 1) != sf::Socket::Done) {
         logl("Could not send data");
     }
@@ -47,11 +48,17 @@ void ClientNetwork::send(std::string sent) {
 void ClientNetwork::run() {
     std::thread reception_thred(&ClientNetwork::receive, this, &socket);
 
+    send("3spixa");
+
     while (true) {
         if (isConnected) {
             std::string user_input;
             std::string args[512];
             std::getline(std::cin, user_input);
+
+            if (mode == MessageType::ChatMessageType) {
+                user_input = "0" + user_input;
+            }
 
             send(user_input);
         }

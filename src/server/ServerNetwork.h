@@ -19,14 +19,21 @@
 
 enum class DisconnectReason {
     DisconnectLeave = 0,
-    DisconnectKick = 1
+    DisconnectKick = 1,
+    DisconnectUnnamed = 2,
+};
+
+enum class MessageType {
+    ChatMessageType = 0,
+    JoinMessageType = 1,
+    LeaveMessageType = 2,
+    IdentifyMessageType = 3,
 };
 
 class ServerNetwork {
     sf::TcpListener listener;
     std::vector<sf::TcpSocket*> client_array;
     std::vector<std::string> clientid_array;
-
     unsigned short listen_port;
 public:
     ServerNetwork(unsigned short);

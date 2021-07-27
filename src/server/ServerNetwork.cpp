@@ -1,7 +1,7 @@
 #include "ServerNetwork.h"
 #include <string>
 #include <sstream>
-#include "PacketType.h"
+
 
 ServerNetwork::ServerNetwork(unsigned short port) : listen_port(port) {
     logl("Server: Server has begun on port " + std::to_string(port));
@@ -16,9 +16,10 @@ void ServerNetwork::connectClients(std::vector<sf::TcpSocket*>* client_array) {
         if (listener.accept(*new_client) == sf::Socket::Done) {
             new_client->setBlocking(false);
             client_array->push_back(new_client);
+            clientid_array.push_back("\x96");
             logl("Server > " << new_client->getRemoteAddress() << ":" << new_client->getRemotePort() << " connected. [" << client_array->size() << "]");
 
-            std::string joinMessage = new_client->getRemoteAddress().toString() + ":" + std::to_string(new_client->getRemotePort()) + " connected.";
+            std::string joinMessage = "1\x01" + new_client->getRemoteAddress().toString() + ":" + std::to_string(new_client->getRemotePort()) + " connected.";
 
             broadcast(joinMessage.c_str(),new_client->getRemoteAddress(), new_client->getRemotePort());
             
@@ -32,24 +33,32 @@ void ServerNetwork::connectClients(std::vector<sf::TcpSocket*>* client_array) {
 }
 
 void ServerNetwork::disconnectClient(sf::TcpSocket* socket_pointer, size_t position, DisconnectReason reason) {
-    logl("Server > " << socket_pointer->getRemoteAddress() << ":" << socket_pointer->getRemotePort() << " disconnected.");
+    log("Server > " << socket_pointer->getRemoteAddress() << ":" << socket_pointer->getRemotePort() << " disconnected for ");
 
-    std::string joinMessage = socket_pointer->getRemoteAddress().toString() + ":" + std::to_string(socket_pointer->getRemotePort()) + " disconnected for ";
+    std::string leaveMessage = "2\x01" + socket_pointer->getRemoteAddress().toString() + ":" + std::to_string(socket_pointer->getRemotePort()) + " disconnected for ";
 
     switch (reason) {
         case DisconnectReason::DisconnectLeave:
-            joinMessage += "Generic Leave Activity";
+            leaveMessage += "Generic Leave Activity";
+            logl("Generic Leave Activity");
         break;
         case DisconnectReason::DisconnectKick:
-            joinMessage += "Nuisance Activities";
+            leaveMessage += "Nuisance Activities";
+            logl("Undefined behavior");
+        break;
+        case DisconnectReason::DisconnectUnnamed:
+            leaveMessage += "Unnamed user";
+            logl("Unnamed user");
+            logl("Kicked junk client trying to send message.");
         break;
     }
-
-    broadcast(joinMessage.c_str(),socket_pointer->getRemoteAddress(), socket_pointer->getRemotePort());
+    
+    broadcast(leaveMessage.c_str(),socket_pointer->getRemoteAddress(), socket_pointer->getRemotePort());
 
     socket_pointer->disconnect();
     delete(socket_pointer);
     client_array.erase(client_array.begin() + position);
+    clientid_array.erase(clientid_array.begin() + position);
 }
 
 
@@ -99,18 +108,50 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
         } 
 
         std::stringstream sending_string;
-        sending_string << received_data << "\x01" << client->getRemoteAddress().toString() << "\x01" << std::to_string(client->getRemotePort());
+        
 
-
-        std::string convertedSS = sending_string.str();
-
-        char char_array[256] = {'\0'};
-        strcpy(char_array,convertedSS.c_str());
-
-        if (strcmp(received_data,"exit") == 0) {
+        if (strcmp(received_data,"0exit") == 0) {
+            
             exit(EXIT_SUCCESS);
         }
 
+        if ((strncmp("0",received_data,1) == 0)) {
+            memmove(received_data, received_data+1, strlen (received_data+1) + 1);
+           if (clientid_array[iterator] != "\x96")
+                sending_string << "0" << "\x01" << received_data << "\x01" << clientid_array[iterator];
+            else {
+                //sending_string << "0" << "\x01" << received_data << "\x01" << client->getRemoteAddress().toString() << "\x01" << std::to_string(client->getRemotePort());
+                disconnectClient(client,iterator,DisconnectReason::DisconnectUnnamed);
+                return;
+            }
+        } else
+        if ((strncmp("3",received_data,1) == 0)) {
+            memmove(received_data, received_data+1, strlen (received_data+1) + 1);
+            
+            // Check whether name already exists
+            for(auto i : clientid_array) {
+                if (received_data == i) {
+                    
+                    disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
+                    logl("\tAn attempt of connection with an already online alias was blocked.");
+                    return;
+                }
+            } 
+                
+            sending_string << "3" << "\x01" << received_data << client->getRemoteAddress().toString() << "\x01" << std::to_string(client->getRemotePort());
+            logl(client->getRemoteAddress().toString() << ":" << std::to_string(client->getRemotePort()) << " has been aliased to " << received_data );
+            
+            clientid_array[iterator] = received_data;
+        }
+        else {
+            disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
+            return;
+        }
+
+        
+        std::string convertedSS = sending_string.str();
+        char char_array[256] = {'\0'};
+        strcpy(char_array,convertedSS.c_str());
         broadcast(char_array, client->getRemoteAddress(), client->getRemotePort());
         logl(client->getRemoteAddress().toString() << ":" << client->getRemotePort() << " sent '" << char_array << "'");
     }
