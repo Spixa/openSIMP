@@ -39,8 +39,10 @@ class ServerNetwork {
     std::vector<std::string> clientid_array;
     unsigned short listen_port;
 
-    
+    std::vector<ServerObject*> objs;
 
+    Property* chatSend;
+    std::string chatSend_str;
 public:
     ServerNetwork(unsigned short);
     void init();
@@ -55,7 +57,7 @@ public:
     bool send(const char*, size_t counter, sf::TcpSocket*);
     bool check(char*);
 
-    void updateObjs(const char* );
+    void updateObjs();
     
     bool handleSend(char*,std::stringstream&,sf::TcpSocket*, size_t);
     bool handleNick(char*,std::stringstream&,sf::TcpSocket*, size_t);
@@ -63,6 +65,7 @@ public:
     // Core
     void manage();
     void run();
+    ChatHandler* handler;
 };
 
 #endif

@@ -41,8 +41,9 @@ private:
 };
 
 namespace simp {
-	class updater_void {
-
+	enum class updater_void {
+		success_return,
+		fail_return
 	};
 };
 
@@ -122,6 +123,14 @@ public:
     bool isEnabled() const;
 
 	void steadySetup() {}
+
+	
+	void issueNewServerObjectError(std::string reads) {
+		std::cout << "Failure fetching server object \"" << m_name << "\".\n\t" << reads << std::endl;
+	}
+
+	void failObject() {}
+
 protected:
     void onActivated() {}
 private:
@@ -133,12 +142,6 @@ private:
 	ServerObject* m_parent;
 	std::list<ServerObject*> m_objects;
 	bool m_enable;
-
-	void issueNewServerObjectError(std::string reads) {
-		std::cout << "Failure fetching server object \"" << m_name << "\".\n\t" << reads << std::endl;
-	}
-
-	void failObject() {}
 
 };
 

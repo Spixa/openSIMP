@@ -183,6 +183,8 @@ ServerObject::ServerObject()
 {
     m_enable = true;
     m_parent = NULL;
+
+
 }
 
 void ServerObject::setParent(ServerObject* game_object)
@@ -220,6 +222,7 @@ void ServerObject::start()
 void ServerObject::setName(const std::string& name)
 {
     m_name = name;
+    std::cout << "Hooked ServerObject.\n\topenSIMP \"" << m_name << "\" Server Object 0.1.0 (unnamed)\n";
 }
 
 const std::string&  ServerObject::getName() const

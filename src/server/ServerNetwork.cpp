@@ -13,6 +13,13 @@ ServerNetwork::ServerNetwork(unsigned short port) : listen_port(port) {
 
 void ServerNetwork::init() {
 
+    chatSend = new Property(chatSend_str);
+    handler = new ChatHandler();
+    objs.push_back(handler);
+
+    for (auto x : objs) {
+        x->start();
+    }
 
 }
 
@@ -41,7 +48,12 @@ void ServerNetwork::connectClients(std::vector<sf::TcpSocket*>* client_array) {
 void ServerNetwork::disconnectClient(sf::TcpSocket* socket_pointer, size_t position, DisconnectReason reason) {
     log("Server > " << socket_pointer->getRemoteAddress() << ":" << socket_pointer->getRemotePort() << " disconnected for ");
 
-    std::string leaveMessage = "2\x01" + socket_pointer->getRemoteAddress().toString() + ":" + std::to_string(socket_pointer->getRemotePort()) + " disconnected for ";
+    
+    std::string leaveMessage;
+
+    if (clientid_array[position] != "\x96") leaveMessage = "2\x01" + clientid_array[position] + " disconnected for ";
+    else  leaveMessage = "2\x01" + socket_pointer->getRemoteAddress().toString() + ":" + std::to_string(socket_pointer->getRemotePort()) + " disconnected for ";
+
 
     switch (reason) {
         case DisconnectReason::DisconnectLeave:
@@ -106,16 +118,21 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
     }
     else if (received_bytes > 0) {
 
+
         if (!check(received_data)) {
-            logl("Invalid send from " << client->getRemoteAddress() << ":" << client->getRemotePort());
-            logl("Nuisance abolished.");
+            if (clientid_array[iterator] != "\x96") logl("Invalid send from " << clientid_array[iterator]);
+            else logl("Invalid send from " << client->getRemoteAddress() << ":" << client->getRemotePort());
+            logl("Integrity: Remote " << client->getRemoteAddress() << ":" << client->getRemotePort() << " sent an illegal charachter");
             disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
             return;
         }
 
         if (received_bytes >= 256) {
-            logl("Invalid send from " << client->getRemoteAddress() << ":" << client->getRemotePort());
-            logl("Nuisance abolished FOR SENDING TOO MUCH DATA. HOLY SHEEEEEEEESH");
+            
+            if (clientid_array[iterator] != "\x96") logl("Invalid send from " << clientid_array[iterator]);
+            else logl("Invalid send from " << client->getRemoteAddress() << ":" << client->getRemotePort());
+
+            logl("Integrity: Remote " << client->getRemoteAddress() << ":" << client->getRemotePort() << " sent too many charachters");
             disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
             return;
         }
@@ -134,22 +151,28 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
             disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
             return;
         }
-
-        updateObjs(received_data);
         
+
         std::string convertedSS = sending_string.str();
         char char_array[256] = {'\0'};
         strcpy(char_array,convertedSS.c_str());
         broadcast(char_array, client->getRemoteAddress(), client->getRemotePort());
-        logl(client->getRemoteAddress().toString() << ":" << client->getRemotePort() << " sent '" << char_array << "'");
-    }
 
+        if (clientid_array[iterator] != "\x96") logl(clientid_array[iterator] << " sent '" << received_data << "'"); 
+        else logl(client->getRemoteAddress().toString() << ":" << client->getRemotePort() << " sent '" << received_data << "'"); 
+   
+        
+        updateObjs();
+        chatSend_str = "";
+    }
 }
 
 bool ServerNetwork::handleSend(char* received_data,std::stringstream& sending_string,sf::TcpSocket* client, size_t iterator) {
     memmove(received_data, received_data+1, strlen (received_data+1) + 1);
-    if (clientid_array[iterator] != "\x96")
+    if (clientid_array[iterator] != "\x96") {
         sending_string << "0" << "\x01" << received_data << "\x01" << clientid_array[iterator];
+        chatSend_str = received_data;
+    }
     else {
         disconnectClient(client,iterator,DisconnectReason::DisconnectUnnamed);
         return false;
@@ -170,15 +193,18 @@ bool ServerNetwork::handleNick(char* received_data,std::stringstream& sending_st
         }
     } 
     sending_string << "3" << "\x01" << received_data << "'\x01" << client->getRemoteAddress().toString() << "\x01" << std::to_string(client->getRemotePort());
-    logl(client->getRemoteAddress().toString() << ":" << std::to_string(client->getRemotePort()) << " has been aliased to " << received_data );
+    logl(client->getRemoteAddress().toString() << ":" << std::to_string(client->getRemotePort()) << " is now recognized as " << received_data );
     clientid_array[iterator] = received_data;
 
     // Normal
     return true;
 }
 
-void ServerNetwork::updateObjs(const char* data) {
-
+void ServerNetwork::updateObjs() {
+    *chatSend = Property(chatSend_str);
+    for (auto x : objs) {
+        x->update(*chatSend);
+    }
 }
 
 void ServerNetwork::manage() {

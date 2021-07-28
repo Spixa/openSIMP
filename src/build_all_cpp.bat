@@ -5,7 +5,7 @@ echo Compiling Server and client
 echo =======================
 echo    Compiling server
 echo =======================
-g++ server/ServerNetwork.cpp server/ServerNetwork.h server/PacketType.h server/server.cpp server/ServerObject.h server/ServerObject.cpp -o susserver -lpthread -lsfml-system -lsfml-network -LC:\SFML\lib -IC:\SFML\include -W -Wall -std=c++11
+g++ server/ServerNetwork.cpp server/ServerNetwork.h server/PacketType.h server/server.cpp server/ServerObject.h server/ServerObject.cpp server/ChatHandler.h server/ChatHandler.cpp -o susserver -lpthread -lsfml-system -lsfml-network -LC:\SFML\lib -IC:\SFML\include -W -Wall -std=c++11
 echo =======================
 echo    Compiling client
 echo =======================
