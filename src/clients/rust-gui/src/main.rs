@@ -226,7 +226,6 @@ fn main() {
                 if name.is_empty() {
                     continue;
                 } else {
-                    s.send(Message::Login);
                     break;
                 }
             }
@@ -251,6 +250,8 @@ fn main() {
     let server_connection_arc = Arc::new(Mutex::new(server_connection.try_clone().unwrap()));
     let server_connection_ref = server_connection_arc;
     let mut svc_try_cloned = server_connection.try_clone().unwrap();
+
+    s.send(Message::Login);
 
     std::thread::spawn(move || loop {
         loop {
