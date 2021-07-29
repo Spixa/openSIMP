@@ -114,7 +114,6 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
     }
     else if (received_bytes > 0) {
 
-
         if (!check(received_data)) {
             if (clientid_array[iterator] != "\x96") logl("Invalid send from " << clientid_array[iterator]);
             else logl("Invalid send from " << client->getRemoteAddress() << ":" << client->getRemotePort());
@@ -174,6 +173,8 @@ bool ServerNetwork::handleSend(char* received_data,std::stringstream& sending_st
         disconnectClient(client,iterator,DisconnectReason::DisconnectUnnamed);
         return false;
     }
+
+
     
     // Normal
     return true;
