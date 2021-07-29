@@ -30,11 +30,7 @@ void ServerNetwork::connectClients(std::vector<sf::TcpSocket*>* client_array) {
             new_client->setBlocking(false);
             client_array->push_back(new_client);
             clientid_array.push_back("\x96");
-            logl("Server > " << new_client->getRemoteAddress() << ":" << new_client->getRemotePort() << " connected. [" << client_array->size() << "]");
-
-            std::string joinMessage = "1\x01" + new_client->getRemoteAddress().toString() + ":" + std::to_string(new_client->getRemotePort()) + " connected.";
-
-            broadcast(joinMessage.c_str(),new_client->getRemoteAddress(), new_client->getRemotePort());
+            logl("Unregistered " << new_client->getRemoteAddress() << ":" << new_client->getRemotePort() << " was accepted [" << client_array->size() << "]");
             
         }
         else {
@@ -144,7 +140,8 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
             if(!handleSend(received_data,sending_string,client,iterator)) return;
         } else
         if ((strncmp("3",received_data,1) == 0)) {
-            if(!handleNick(received_data,sending_string,client,iterator)) return;
+            handleNick(received_data,sending_string,client,iterator);
+            return;
             
         }
         else {
@@ -192,8 +189,14 @@ bool ServerNetwork::handleNick(char* received_data,std::stringstream& sending_st
             return false;
         }
     } 
-    sending_string << "3" << "\x01" << received_data << "\x01" << client->getRemoteAddress().toString() << "\x01" << std::to_string(client->getRemotePort());
-    logl(client->getRemoteAddress().toString() << ":" << std::to_string(client->getRemotePort()) << " is now recognized as " << received_data );
+    char char_array[256] = {'\0'};
+    strcpy(char_array,received_data);
+
+    std::stringstream joinMessageStream;
+    joinMessageStream << "1\x01" << char_array << " connected.";
+
+    broadcast(joinMessageStream.str().c_str(),client->getRemoteAddress(), client->getRemotePort()); 
+    logl(client->getRemoteAddress().toString() << ":" << std::to_string(client->getRemotePort()) << ": Remote entry is masked to " << received_data );
     clientid_array[iterator] = received_data;
 
     // Normal
