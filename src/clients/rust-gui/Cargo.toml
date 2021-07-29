@@ -1,5 +1,5 @@
 [package]
-name = "susrust-fltk"
+name = "opensimp-rust-gui"
 version = "0.1.0"
 edition = "2018"
 

@@ -97,6 +97,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "opensimp-rust-gui"
+version = "0.1.0"
+dependencies = [
+ "fltk",
+ "fltk-theme",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -121,14 +129,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0a441a7a6c80ad6473bd4b74ec1c9a4c951794285bf941c2126f607c72e48211"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "susrust-fltk"
-version = "0.1.0"
-dependencies = [
- "fltk",
- "fltk-theme",
 ]
 
 [[package]]
