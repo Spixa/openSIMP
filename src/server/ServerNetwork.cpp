@@ -192,7 +192,7 @@ bool ServerNetwork::handleNick(char* received_data,std::stringstream& sending_st
             return false;
         }
     } 
-    sending_string << "3" << "\x01" << received_data << "'\x01" << client->getRemoteAddress().toString() << "\x01" << std::to_string(client->getRemotePort());
+    sending_string << "3" << "\x01" << received_data << "\x01" << client->getRemoteAddress().toString() << "\x01" << std::to_string(client->getRemotePort());
     logl(client->getRemoteAddress().toString() << ":" << std::to_string(client->getRemotePort()) << " is now recognized as " << received_data );
     clientid_array[iterator] = received_data;
 
