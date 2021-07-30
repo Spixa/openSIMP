@@ -14,7 +14,8 @@ enum class MessageType {
     ChatMessageType = 0,
     JoinMessageType = 1,
     LeaveMessageType = 2,
-    IdentifMessageType = 3
+    IdentifMessageType = 3,
+    CommandResponseType = 5,
 };
 
 class ClientNetwork {
