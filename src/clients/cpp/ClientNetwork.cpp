@@ -60,11 +60,23 @@ void ClientNetwork::run() {
             std::string args[512];
             std::getline(std::cin, user_input);
 
+            if (user_input == "switch_mode") {
+                if (mode == MessageType::ChatMessageType) {
+                    mode = MessageType::CommandResponseType;
+                } else mode = MessageType::ChatMessageType;
+
+                
+            }
             if (mode == MessageType::ChatMessageType) {
                 user_input = "0" + user_input;
+                send(user_input);
+            } else
+            if (mode == MessageType::CommandResponseType) {
+                user_input = "5" + user_input;
+                send(user_input);
             }
 
-            send(user_input);
+            
         }
     }
 }

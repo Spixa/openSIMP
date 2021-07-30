@@ -30,6 +30,7 @@ void ServerNetwork::connectClients(std::vector<sf::TcpSocket*>* client_array) {
             new_client->setBlocking(false);
             client_array->push_back(new_client);
             clientid_array.push_back("\x96");
+            client_op_array.push_back(false);
             logl("Unregistered " << new_client->getRemoteAddress() << ":" << new_client->getRemotePort() << " was accepted [" << client_array->size() << "]");
             
         }
@@ -105,6 +106,10 @@ bool ServerNetwork::check(char* data) {
   if (ptr == NULL) return true;
   return false; 
 }
+
+bool ServerNetwork::isOp(size_t iter) {
+    return client_op_array[iter];
+}
  
 void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
     char received_data[MAX_RAW_DATA]; size_t received_bytes;
@@ -137,11 +142,18 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
         // Handle receives
         if ((strncmp("0",received_data,1) == 0)) {
             if(!handleSend(received_data,sending_string,client,iterator)) return;
+  
         } else
         if ((strncmp("3",received_data,1) == 0)) {
-            handleNick(received_data,sending_string,client,iterator);
+            handleNick(received_data,client,iterator);
             return;
             
+        } else
+        if ((strncmp("4",received_data,1) == 0)) {
+            
+        } else
+        if ((strncmp("5",received_data,1) == 0)) {
+            handleCommand(received_data,client,iterator);
         }
         else {
             disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
@@ -163,6 +175,24 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
     }
 }
 
+void ServerNetwork::handleCommand(char* received_data,sf::TcpSocket* client, size_t iterator) {
+    memmove(received_data, received_data+1, strlen (received_data+1) + 1);
+    char* message = received_data;
+    if (strcmp(message,"list") == 0) {
+        std::stringstream list_all;
+        list_all << "5\x01\nList of online users: ";
+        for (auto x: clientid_array) {
+            if (x != "\x96") list_all << x << " ";
+        }
+        send(list_all.str().c_str(),list_all.str().length() + 1,client);
+    } else
+    if (strcmp(message,"getpos") == 0){
+        std::stringstream pos;
+        pos << "5\x01 Current pos: " << std::to_string(iterator);
+        send(pos.str().c_str(),pos.str().length() + 1, client);
+    }
+ 
+}
 bool ServerNetwork::handleSend(char* received_data,std::stringstream& sending_string,sf::TcpSocket* client, size_t iterator) {
     memmove(received_data, received_data+1, strlen (received_data+1) + 1);
     if (clientid_array[iterator] != "\x96") {
@@ -180,7 +210,7 @@ bool ServerNetwork::handleSend(char* received_data,std::stringstream& sending_st
     return true;
 }
 
-bool ServerNetwork::handleNick(char* received_data,std::stringstream& sending_string,sf::TcpSocket* client, size_t iterator) {
+bool ServerNetwork::handleNick(char* received_data,sf::TcpSocket* client, size_t iterator) {
     memmove(received_data, received_data+1, strlen (received_data+1) + 1);
     // Check whether name already exists
     for(auto i : clientid_array) {
@@ -202,6 +232,27 @@ bool ServerNetwork::handleNick(char* received_data,std::stringstream& sending_st
 
     // Normal
     return true;
+}
+
+void ServerNetwork::handleRequestedConsole(sf::TcpSocket* sock,size_t iterpos) {
+    log("[OP ME]" << sock->getRemoteAddress().toString() << ":" << sock->getRemotePort() << " (AKA:" << clientid_array[iterpos] << "): Remote is requesting to become an operator. [Y/N]");
+    char say;
+    std::cin >> say;
+    switch (say) {
+        case 'Y' | 'y': 
+            logl("Opped remote.");
+            client_op_array[iterpos] = true;
+        break;
+        case 'N' | 'n':
+            logl("Denied");
+            return;
+        break;
+        default:
+            logl("wrong input.");
+            return;
+    }      
+
+
 }
 
 void ServerNetwork::updateObjs() {
