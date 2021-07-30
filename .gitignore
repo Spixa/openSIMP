@@ -7,3 +7,4 @@ src/susserver
 src/susclient
 src/clients/rust-gui/target
 util/susrust/target
+src/.vscode
