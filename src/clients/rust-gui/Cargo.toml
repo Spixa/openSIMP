@@ -5,8 +5,10 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [profile.release]
-lto = "thin"
+lto = true
 
 [dependencies]
+trust-dns-resolver = "0.20.3"
 fltk = { version = "1.1", features = ["fltk-bundled"] }
 fltk-theme = "0.1"
+notify-rust = "4"

@@ -13,8 +13,11 @@ use fltk::{
 };
 use fltk_theme::{ThemeType, WidgetTheme};
 use std::io::prelude::*;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
+use trust_dns_resolver::config::*;
+use trust_dns_resolver::Resolver;
+use notify_rust::Notification;
 
 pub mod network {
     use std::io;
@@ -32,6 +35,7 @@ pub enum Message {
     Login,
     SendMessage,
     GoToNewest,
+    NewestIfToggled,
     Redraw,
     Quit,
     ChangeTheme(ThemeType),
@@ -108,11 +112,7 @@ fn main() {
     let (s, r) = app::channel::<Message>();
 
     let app = app::App::default();
-    let mut widget_theme = WidgetTheme::new(ThemeType::Dark);
-    if std::env::var("AERO").is_ok() {
-        widget_theme = WidgetTheme::new(ThemeType::Aero);
-    }
-    let widget_theme = widget_theme;
+    let widget_theme = WidgetTheme::new(ThemeType::HighContrast);
     widget_theme.apply();
     let mut wind = Window::default()
         .with_size(730, 570)
@@ -141,7 +141,7 @@ fn main() {
         .with_label("autoscroll -");
     {
         let textbox = textbox.lock().unwrap();
-        toggle = toggle.below_of(&*textbox, 5);
+        toggle = toggle.below_of(&*textbox, 5)
     }
     let mut goto_newest = Button::default()
         .with_size(60, 30)
@@ -180,7 +180,7 @@ fn main() {
         Message::ChangeTheme(ThemeType::Aero),
     );
     menu.add_emit(
-        "Themes/High contrast\t",
+        "Themes/H4xx0r\t",
         Shortcut::None,
         menu::MenuFlag::Normal,
         s,
@@ -216,7 +216,59 @@ fn main() {
         _ => false,
     });
 
+    /*
+    wind.handle(move |_, event| match event {
+        Event::Focus => {
+            true
+        }
+        Event::Unfocus => {
+            true
+        }
+        _ => false,
+    });
+    */
+
     wind.show();
+
+    let mut inner_url;
+    loop {
+        inner_url = dialog::input(
+            center().0,
+            center().1,
+            "Please enter a url/ip for the server with port seperated by ':'\n(ui may freeze while resolving urls)",
+            "",
+        );
+        match inner_url {
+            Some(ref name) => {
+                if name.is_empty() {
+                    continue;
+                } else {
+                    break;
+                }
+            }
+            None => continue,
+        }
+    }
+    let port = inner_url
+        .clone()
+        .unwrap()
+        .split(':')
+        .last()
+        .unwrap()
+        .parse::<u16>()
+        .unwrap();
+
+    // pain
+    let url = inner_url.unwrap();
+    let url = url.split(':').next().unwrap();
+
+    let resolver = Resolver::new(ResolverConfig::default(), ResolverOpts::default()).unwrap();
+    let response = resolver
+        .lookup_ip(url)
+        .unwrap()
+        .iter()
+        .next()
+        .expect("no address returned!");
 
     let mut uname;
     loop {
@@ -238,8 +290,8 @@ fn main() {
     message.take_focus().unwrap();
 
     let server_connection = match network::connect(SocketAddr::new(
-        IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-        37549,
+        //IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+        response, port,
     )) {
         Ok(stream) => stream,
         Err(err) => {
@@ -266,22 +318,34 @@ fn main() {
             let packet = parse_packet(&buf);
             match packet {
                 Packet::MessagePacket(username, message) => {
-                    let text = format!("{}: {}\n", username, message);
+                    let text = format!("{}: {}\n", &username, &message);
                     {
                         let mut textbox = textbox_ref.lock().unwrap();
                         let txbxlen = textbox.buffer().unwrap().length();
                         textbox.set_insert_position(txbxlen); // put cursor at the end before insertion
                         textbox.insert(&text);
+                        s.send(Message::NewestIfToggled);
                     }
+                    Notification::new()
+                        .summary(format!("Message from {}", &username).as_str())
+                        .body(format!("{}: {}", &username, &message).as_str())
+                        .show()
+                        .unwrap();
                 }
                 Packet::JoinPacket(notif) => {
-                    let text = format!("{}\n", notif);
+                    let text = format!("{}\n", &notif);
                     {
                         let mut textbox = textbox_ref.lock().unwrap();
                         let txbxlen = textbox.buffer().unwrap().length();
                         textbox.set_insert_position(txbxlen);
                         textbox.insert(&text);
+                        s.send(Message::NewestIfToggled);
                     }
+                    Notification::new()
+                        .summary("Someone joined!")
+                        .body(&notif)
+                        .show()
+                        .unwrap();
                 }
                 Packet::DisconnectPacket(notif) => {
                     let text = format!("{}\n", notif);
@@ -290,7 +354,13 @@ fn main() {
                         let txbxlen = textbox.buffer().unwrap().length();
                         textbox.set_insert_position(txbxlen);
                         textbox.insert(&text);
+                        s.send(Message::NewestIfToggled);
                     }
+                    Notification::new()
+                        .summary("Someone left!")
+                        .body(&notif)
+                        .show()
+                        .unwrap();
                 }
             };
 
@@ -319,7 +389,7 @@ fn main() {
                 }
 
                 if message.value().is_empty() {
-                    dialog::alert(center().0, center().1, "Cannot send an empty message!");
+                    //dialog::alert(center().0, center().1, "Cannot send an empty message!");
                 } else {
                     {
                         let textbox = textbox.lock().unwrap();
@@ -344,6 +414,13 @@ fn main() {
                 let mut textbox = textbox.lock().unwrap();
                 let txbxlen = textbox.buffer().unwrap().length();
                 textbox.scroll(txbxlen, 0);
+            }
+            Some(Message::NewestIfToggled) => {
+                if toggle.is_toggled() {
+                    let mut textbox = textbox.lock().unwrap();
+                    let txbxlen = textbox.buffer().unwrap().length();
+                    textbox.scroll(txbxlen, 0);
+                }
             }
             Some(Message::Redraw) => {
                 if toggle.is_toggled() {

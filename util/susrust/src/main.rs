@@ -48,7 +48,10 @@ fn main() {
             },
             "send" => {
                 let string = std::env::args().nth(2).unwrap(); // for readability purposes only
+                server_connection.write(&"3tester".to_string().into_bytes()).unwrap();
+                std::thread::sleep_ms(500);
                 server_connection.write(&string.into_bytes()).unwrap();
+                std::thread::sleep_ms(5000);
             },
             "bytesend" => {
                 let string = std::env::args().nth(2).unwrap(); // for readability purposes only
