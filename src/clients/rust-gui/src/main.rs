@@ -17,6 +17,8 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use trust_dns_resolver::config::*;
 use trust_dns_resolver::Resolver;
+
+#[cfg(target_os = "linux")]
 use notify_rust::Notification;
 
 pub mod network {
@@ -307,6 +309,7 @@ fn main() {
 
     std::thread::spawn(move || loop {
         loop {
+
             let mut buf: Vec<u8> = vec![0; 4096];
             let bytes_read = svc_try_cloned.read(&mut buf).unwrap();
             buf.truncate(bytes_read);
@@ -326,11 +329,15 @@ fn main() {
                         textbox.insert(&text);
                         s.send(Message::NewestIfToggled);
                     }
+
+                    #[cfg(target_os = "linux")]
+                    {
                     Notification::new()
                         .summary(format!("Message from {}", &username).as_str())
                         .body(format!("{}: {}", &username, &message).as_str())
                         .show()
                         .unwrap();
+                    }
                 }
                 Packet::JoinPacket(notif) => {
                     let text = format!("{}\n", &notif);
@@ -341,11 +348,15 @@ fn main() {
                         textbox.insert(&text);
                         s.send(Message::NewestIfToggled);
                     }
+
+                    #[cfg(target_os = "linux")]
+                    {
                     Notification::new()
                         .summary("Someone joined!")
                         .body(&notif)
                         .show()
                         .unwrap();
+                    }
                 }
                 Packet::DisconnectPacket(notif) => {
                     let text = format!("{}\n", notif);
@@ -356,11 +367,15 @@ fn main() {
                         textbox.insert(&text);
                         s.send(Message::NewestIfToggled);
                     }
+
+                    #[cfg(target_os = "linux")]
+                    {
                     Notification::new()
                         .summary("Someone left!")
                         .body(&notif)
                         .show()
                         .unwrap();
+                    }
                 }
             };
 
