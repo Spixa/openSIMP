@@ -1,4 +1,6 @@
-# Suschat
+# openSIMP
+Open Secure Instant Messaging Protocol (formerly Suschat)
+
 Extremely sus server and also clients
 
 ## Progress
