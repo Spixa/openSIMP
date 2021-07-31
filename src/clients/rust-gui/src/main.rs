@@ -51,6 +51,8 @@ pub enum Packet {
     JoinPacket(Arc<String>),
     // username + disconnected line
     DisconnectPacket(Arc<String>),
+    // command result
+    CommandReplyPacket(Arc<String>),
 }
 
 fn center() -> (i32, i32) {
@@ -58,6 +60,14 @@ fn center() -> (i32, i32) {
         (app::screen_size().0 / 2.0) as i32,
         (app::screen_size().1 / 2.0) as i32,
     )
+}
+
+// credit: https://stackoverflow.com/questions/30811107/how-do-i-get-the-first-character-out-of-a-string#comment83958722_48482196
+fn car_cdr(s: &str) -> (&str, &str) {
+    match s.chars().next() {
+        Some(c) => s.split_at(c.len_utf8()),
+        None => s.split_at(0),
+    }
 }
 
 fn parse_packet(buf: &[u8]) -> Packet {
@@ -96,6 +106,12 @@ fn parse_packet(buf: &[u8]) -> Packet {
                         .unwrap()
                         .to_string(),
                 );
+            } else if (&strvec[0] == "5") && (ifpasses == 1) {
+                strvec.push(
+                    std::str::from_utf8(&buf[last_point..buf.len()])
+                        .unwrap()
+                        .to_string(),
+                );
             }
         }
     }
@@ -104,7 +120,8 @@ fn parse_packet(buf: &[u8]) -> Packet {
         "0" => Packet::MessagePacket(Arc::new(strvec[2].clone()), Arc::new(strvec[1].clone())),
         "1" => Packet::JoinPacket(Arc::new(strvec[1].clone())),
         "2" => Packet::DisconnectPacket(Arc::new(strvec[1].clone())),
-        _ => panic!("please screenshot this and open an issue"),
+        "5" => Packet::CommandReplyPacket(Arc::new(strvec[1].clone())),
+        _ => panic!("illegal packet reply starter"),
     };
 
     res
@@ -114,7 +131,7 @@ fn main() {
     let (s, r) = app::channel::<Message>();
 
     let app = app::App::default();
-    let widget_theme = WidgetTheme::new(ThemeType::HighContrast);
+    let widget_theme = WidgetTheme::new(ThemeType::Dark);
     widget_theme.apply();
     let mut wind = Window::default()
         .with_size(730, 570)
@@ -140,10 +157,11 @@ fn main() {
     //let mut frame = Frame::default().with_size(40, 20).with_label("0");
     let mut toggle = ToggleButton::default()
         .with_size(100, 30)
-        .with_label("autoscroll -");
+        .with_label("autoscroll +");
     {
         let textbox = textbox.lock().unwrap();
-        toggle = toggle.below_of(&*textbox, 5)
+        toggle = toggle.below_of(&*textbox, 5);
+        toggle.toggle(true);
     }
     let mut goto_newest = Button::default()
         .with_size(60, 30)
@@ -272,6 +290,20 @@ fn main() {
         .next()
         .expect("no address returned!");
 
+    let server_connection = match network::connect(SocketAddr::new(
+        //IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+        response, port,
+    )) {
+        Ok(stream) => stream,
+        Err(err) => {
+            dialog::alert(center().0, center().1, "Oopsie woopsie! UwU we made a fucky wucky!! a wittle fucko boingo!\nThe code monkeys at our headquarters are working VEWY HAWD to fix this!\n(no they arent, connection to the server failed, press \"Close\" to die)");
+            panic!("error occured while trying to connect: {}", err);
+        }
+    };
+    let server_connection_arc = Arc::new(Mutex::new(server_connection.try_clone().unwrap()));
+    let server_connection_ref = server_connection_arc;
+    let mut svc_try_cloned = server_connection.try_clone().unwrap();
+
     let mut uname;
     loop {
         uname = dialog::input(center().0, center().1, "Please type in a username", "");
@@ -291,19 +323,7 @@ fn main() {
 
     message.take_focus().unwrap();
 
-    let server_connection = match network::connect(SocketAddr::new(
-        //IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-        response, port,
-    )) {
-        Ok(stream) => stream,
-        Err(err) => {
-            dialog::alert(center().0, center().1, "Oopsie woopsie! UwU we made a fucky wucky!! a wittle fucko boingo!\nThe code monkeys at our headquarters are working VEWY HAWD to fix this!\n(no they arent, connection to the server failed, press \"Close\" to die)");
-            panic!("error occured while trying to connect: {}", err);
-        }
-    };
-    let server_connection_arc = Arc::new(Mutex::new(server_connection.try_clone().unwrap()));
-    let server_connection_ref = server_connection_arc;
-    let mut svc_try_cloned = server_connection.try_clone().unwrap();
+    let mut uwuify = false;
 
     s.send(Message::Login);
 
@@ -377,6 +397,17 @@ fn main() {
                         .unwrap();
                     }
                 }
+                Packet::CommandReplyPacket(reply) => {
+                    let text = format!("[Server]: {}", reply.trim());
+                    {
+                        let mut textbox = textbox_ref.lock().unwrap();
+                        let txbxlen = textbox.buffer().unwrap().length();
+                        textbox.set_insert_position(txbxlen);
+                        textbox.insert(&text);
+                        textbox.insert("\n");
+                        s.send(Message::NewestIfToggled);
+                    }
+                }
             };
 
             //println!("read {} bytes: {:x?}", bytes_read, buf);
@@ -405,15 +436,66 @@ fn main() {
 
                 if message.value().is_empty() {
                     //dialog::alert(center().0, center().1, "Cannot send an empty message!");
-                } else {
+                } else if message.value().trim() == "/op" {
                     {
                         let textbox = textbox.lock().unwrap();
-                        textbox.insert(format!("{}: {}\n", uname, message.value()).as_str());
+                        textbox.insert(format!("[Info]: Requested operator\n").as_str());
                     }
                     {
                         let mut server_connection = server_connection_ref.lock().unwrap();
                         server_connection
-                            .write_all(&format!("0{}", message.value()).into_bytes())
+                            .write_all(&format!("4").into_bytes())
+                            .unwrap();
+                    }
+                    message.set_value("");
+                } else if message.value().trim() == "/uwuify" {
+                    if !uwuify {
+                        uwuify = true;
+                        {
+                            let textbox = textbox.lock().unwrap();
+                            textbox.insert(format!("[Info]: uwuifier ON!\n").as_str());
+                        }
+                    } else {
+                        uwuify = false;
+                        {
+                            let textbox = textbox.lock().unwrap();
+                            textbox.insert(format!("[Info]: uwuifier OFF!\n").as_str());
+                        }
+                    }
+                    message.set_value("");
+                } else if message.value().trim() == "/help" {
+                    {
+                        let textbox = textbox.lock().unwrap();
+                        textbox.insert(format!("[Info]:\nClient commands: /op, /uwuify\nServer: /list, /getpos\nTypes of system messages: Info (from the client), Server (response from the server)\n").as_str());
+                    }
+                    message.set_value("");
+                } else if message.value().chars().next().unwrap() == '/' {
+                    let strmsg = message.value().clone();
+                    let (_, command) = car_cdr(strmsg.as_str());
+                    {
+                        let textbox = textbox.lock().unwrap();
+                        textbox.insert(format!("[Info]: Sending command \"{}\" \n", command).as_str());
+                    }
+                    {
+                        let mut server_connection = server_connection_ref.lock().unwrap();
+                        server_connection
+                            .write_all(&format!("5{}", command).into_bytes())
+                            .unwrap();
+                    }
+                    message.set_value("");
+                } else {
+                    let mut string = message.value().replace('\n', "");
+                    if uwuify {
+                        string = string.replace(&['r', 'l'][..], "w");
+                    }
+                    {
+                        let textbox = textbox.lock().unwrap();
+                        textbox.insert(format!("{}: {}\n", uname, string).as_str());
+                    }
+                    {
+                        let mut server_connection = server_connection_ref.lock().unwrap();
+                        server_connection
+                            .write_all(&format!("0{}", string).into_bytes())
                             .unwrap();
                     }
                     message.set_value("");
