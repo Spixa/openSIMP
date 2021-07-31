@@ -1,6 +1,16 @@
 #ifndef SERVERNETWORK_H
 #define SERVERNETWORK_H
 
+
+
+#ifdef __unix__  
+    #define OS_Windows 0
+#elif defined(_WIN32) || defined(WIN32)    
+    #define OS_Windows 1
+
+#endif
+
+
 #include <iostream>
 #include <thread>
 #include <vector>
@@ -24,6 +34,7 @@ enum class DisconnectReason {
     DisconnectLeave = 0,
     DisconnectKick = 1,
     DisconnectUnnamed = 2,
+
 };
 
 enum class MessageType {
@@ -33,6 +44,7 @@ enum class MessageType {
     IdentifyMessageType = 3,
     RequestConsole = 4,
     CommandResponse = 5,
+    DirectMessage = 6,
 };
 
 class ServerNetwork {
@@ -40,9 +52,13 @@ class ServerNetwork {
     std::vector<sf::TcpSocket*> client_array;
     std::vector<std::string> clientid_array;
     std::vector<bool> client_op_array;
+    std::vector<sf::Clock*> client_message_interval;
     unsigned short listen_port;
 
     std::vector<ServerObject*> objs;
+
+    std::vector<std::string> send_queue;
+    sf::TcpSocket* lastQueuer;
 
     Property* chatSend;
     std::string chatSend_str;
@@ -53,9 +69,11 @@ public:
     void connectClients(std::vector<sf::TcpSocket*>*);
     void disconnectClient(sf::TcpSocket*, size_t, DisconnectReason);
 
+    std::string convertToString(char*,int);
+
     // Receive & send
     void receive(sf::TcpSocket*, size_t);
-    void broadcast(const char*, sf::IpAddress, unsigned short);
+    bool broadcast(const char*, sf::IpAddress, unsigned short);
 
     bool send(const char*, size_t counter, sf::TcpSocket*);
     bool check(char*);
@@ -69,6 +87,8 @@ public:
     bool handleNick(char*,sf::TcpSocket*, size_t);
     void handleRequestedConsole(sf::TcpSocket*, size_t);
     // Core
+
+    void sendQueuedMessage(std::vector<std::string>&,sf::TcpSocket* client);
     void manage();
     void run();
     ChatHandler* handler;
