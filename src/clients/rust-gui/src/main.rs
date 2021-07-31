@@ -18,7 +18,7 @@ use std::sync::{Arc, Mutex};
 use trust_dns_resolver::config::*;
 use trust_dns_resolver::Resolver;
 
-#[cfg(target_os = "linux")]
+#[cfg(feature = "notify-rust")]
 use notify_rust::Notification;
 
 pub mod network {
@@ -53,6 +53,8 @@ pub enum Packet {
     DisconnectPacket(Arc<String>),
     // command result
     CommandReplyPacket(Arc<String>),
+    // dm from server
+    ServerDmPacket(Arc<String>),
 }
 
 fn center() -> (i32, i32) {
@@ -112,6 +114,12 @@ fn parse_packet(buf: &[u8]) -> Packet {
                         .unwrap()
                         .to_string(),
                 );
+            } else if (&strvec[0] == "6") && (ifpasses == 1) {
+                strvec.push(
+                    std::str::from_utf8(&buf[last_point..buf.len()])
+                        .unwrap()
+                        .to_string(),
+                );
             }
         }
     }
@@ -121,6 +129,7 @@ fn parse_packet(buf: &[u8]) -> Packet {
         "1" => Packet::JoinPacket(Arc::new(strvec[1].clone())),
         "2" => Packet::DisconnectPacket(Arc::new(strvec[1].clone())),
         "5" => Packet::CommandReplyPacket(Arc::new(strvec[1].clone())),
+        "6" => Packet::ServerDmPacket(Arc::new(strvec[1].clone())),
         _ => panic!("illegal packet reply starter"),
     };
 
@@ -250,7 +259,7 @@ fn main() {
 
     wind.show();
 
-    let mut inner_url;
+    let inner_url;
     loop {
         inner_url = dialog::input(
             center().0,
@@ -259,14 +268,14 @@ fn main() {
             "",
         );
         match inner_url {
-            Some(ref name) => {
-                if name.is_empty() {
-                    continue;
-                } else {
+            Some(ref inner_url) => {
+                if !inner_url.is_empty() {
                     break;
+                } else {
+                    std::process::exit(0)
                 }
             }
-            None => continue,
+            None => std::process::exit(0),
         }
     }
     let port = inner_url
@@ -304,18 +313,18 @@ fn main() {
     let server_connection_ref = server_connection_arc;
     let mut svc_try_cloned = server_connection.try_clone().unwrap();
 
-    let mut uname;
+    let uname;
     loop {
         uname = dialog::input(center().0, center().1, "Please type in a username", "");
         match uname {
             Some(ref name) => {
-                if name.is_empty() {
-                    continue;
-                } else {
+                if !name.is_empty() {
                     break;
+                } else {
+                    std::process::exit(0);
                 }
             }
-            None => continue,
+            None => std::process::exit(0),
         }
     }
     let uname = uname.unwrap();
@@ -350,7 +359,7 @@ fn main() {
                         s.send(Message::NewestIfToggled);
                     }
 
-                    #[cfg(target_os = "linux")]
+                    #[cfg(feature = "notify-rust")]
                     {
                     Notification::new()
                         .summary(format!("Message from {}", &username).as_str())
@@ -369,7 +378,7 @@ fn main() {
                         s.send(Message::NewestIfToggled);
                     }
 
-                    #[cfg(target_os = "linux")]
+                    #[cfg(feature = "notify-rust")]
                     {
                     Notification::new()
                         .summary("Someone joined!")
@@ -388,7 +397,7 @@ fn main() {
                         s.send(Message::NewestIfToggled);
                     }
 
-                    #[cfg(target_os = "linux")]
+                    #[cfg(feature = "notify-rust")]
                     {
                     Notification::new()
                         .summary("Someone left!")
@@ -399,6 +408,17 @@ fn main() {
                 }
                 Packet::CommandReplyPacket(reply) => {
                     let text = format!("[Server]: {}", reply.trim());
+                    {
+                        let mut textbox = textbox_ref.lock().unwrap();
+                        let txbxlen = textbox.buffer().unwrap().length();
+                        textbox.set_insert_position(txbxlen);
+                        textbox.insert(&text);
+                        textbox.insert("\n");
+                        s.send(Message::NewestIfToggled);
+                    }
+                }
+                Packet::ServerDmPacket(dm) => {
+                    let text = format!("[Server (DM)]: {}", dm.trim());
                     {
                         let mut textbox = textbox_ref.lock().unwrap();
                         let txbxlen = textbox.buffer().unwrap().length();
