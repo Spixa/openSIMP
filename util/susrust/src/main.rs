@@ -53,6 +53,15 @@ fn main() {
                 server_connection.write(&string.into_bytes()).unwrap();
                 std::thread::sleep_ms(5000);
             },
+            "spamsend" => {
+                let string = std::env::args().nth(2).unwrap(); // for readability purposes only
+                server_connection.write(&"3tester".to_string().into_bytes()).unwrap();
+                std::thread::sleep_ms(200);
+                loop {
+                    server_connection.write(&string.clone().into_bytes()).unwrap();
+                    std::thread::sleep_ms(100);
+                }
+            },
             "bytesend" => {
                 let string = std::env::args().nth(2).unwrap(); // for readability purposes only
                 println!("{:?}", hex::decode(&string).expect("failed to decode hex"));
