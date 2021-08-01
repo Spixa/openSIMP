@@ -8,3 +8,14 @@ src/susclient
 src/clients/rust-gui/target
 util/susrust/target
 src/.vscode
+**/cmake-build-debug
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/install_manifest.txt
+**/CMakeFiles/
+**/CTestTestfile.cmake
+**/Makefile
+**/*.cbp
+**/CMakeScripts
+**/compile_commands.json
+**/SFML
