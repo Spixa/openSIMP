@@ -3,6 +3,7 @@
 *.out
 *.dll
 *.a
+exc-*
 src/susserver
 src/susclient
 src/clients/rust-gui/target
