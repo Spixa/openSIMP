@@ -225,6 +225,11 @@ void ServerNetwork::handleCommand(char* received_data,sf::TcpSocket* client, siz
         std::stringstream pos;
         pos << "5\x01 Current pos: " << std::to_string(iterator);
         send(pos.str().c_str(),pos.str().length() + 1, client);
+    } else
+    if (strcmp(message,"help") == 0) {
+        std::stringstream say;
+        say << "5\x01You can currently reach these commands: \n\thelp \n\tgetpos \n\tlist";
+        send(say.str().c_str(),say.str().length() +1, client);
     }
  
 }
