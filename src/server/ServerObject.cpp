@@ -184,6 +184,8 @@ ServerObject::ServerObject()
     m_enable = true;
     m_parent = NULL;
 
+    server = ServerNetwork::Get();
+
 
 }
 
@@ -302,7 +304,7 @@ void ServerObject::foreachObject(std::function<void(ServerObject*, bool& )> pred
 
 void ServerObject::removeObject(ServerObject* object)
 {
-    auto action = [this, object]() //remove object later
+    auto action = [this, object]() //remove object latera
     {
         auto it = std::find(m_objects.begin(), m_objects.end(), object);
         assert(it != m_objects.end());
@@ -367,6 +369,7 @@ void ServerObject::moveUnderTo(ServerObject* obj)
     }
 }
 
+
 void ServerObject::clear()
 {
     for (auto object : m_objects)
@@ -381,4 +384,47 @@ void ServerObject::invokePreupdateActions()
     for (auto& action : m_preupdate_actions)
         action();
     m_preupdate_actions.clear();
+}
+
+
+ChatHandler::ChatHandler() : ServerObject() {
+    setName("Chat Handler Module");
+    sharedString = new Property("");
+    
+    steadySetup();
+}
+
+void ChatHandler::start() {
+
+}
+
+void ChatHandler::update(Property& property) {
+    let_property(property);
+    checkMessage();
+
+
+}
+
+
+simp::updater_void ChatHandler::checkMessage() {
+    if (getProperty("checking_message").asString() == "shit") {
+        std::cout << "This word is bad. i think it is bad. plz stop say it it make me sad plz dont.\n";
+        server->end();
+    } 
+
+    setProperty("checking_message",Property(""));
+    return simp::updater_void::success_return;
+}
+
+simp::updater_void ChatHandler::let_property(Property& prop) {
+    if (!prop.isValid()) {
+        issueNewServerObjectError("Property is invalid.");
+        failObject();
+        return simp::updater_void::fail_return;
+    }
+    
+    setProperty("checking_message",prop);
+
+
+    return simp::updater_void::success_return;
 }

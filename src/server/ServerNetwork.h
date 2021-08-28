@@ -21,15 +21,18 @@
 #include <cstring>
 #include <map>
 #include <unordered_map>
+#include "Command.h"
+#include "Executor.h"
 
-#include "ChatHandler.h"
-#include "ServerObject.h"
 #define MAX_RAW_DATA 256 //Max bytes supported on Raw Data mode
 
 #define logl(x) std::cout << x << std::endl
 #define log(x) std::cout << x
-#define PREFIX "[Server]"
+#define CommandLambda [&](sf::TcpSocket* sock,size_t iterator)
+class ServerObject;
+class ChatHandler;
 
+using namespace simp;
 enum class DisconnectReason {
     DisconnectLeave = 0,
     DisconnectKick = 1,
@@ -60,17 +63,30 @@ class ServerNetwork {
     std::vector<std::string> send_queue;
     sf::TcpSocket* lastQueuer;
 
-    Property* chatSend;
     std::string chatSend_str;
+
+    static ServerNetwork* m_instance;
+
+    Executor* cmd_executor;
+
+    ServerNetwork();
+    ServerNetwork(ServerNetwork const&){}
+    ServerNetwork& operator=(ServerNetwork const&){}
+
 public:
-    ServerNetwork(unsigned short);
-    void init();
+    static ServerNetwork* Get();
+    
+
+    void init(unsigned short);
     // Connect & disconnect
     void connectClients(std::vector<sf::TcpSocket*>*);
     void disconnectClient(sf::TcpSocket*, size_t, DisconnectReason);
 
     std::string convertToString(char*,int);
 
+    
+    void sendString(std::string, sf::TcpSocket*);
+    void broadcastString(std::string, sf::IpAddress, unsigned short);
     // Receive & send
     void receive(sf::TcpSocket*, size_t);
     bool broadcast(const char*, sf::IpAddress, unsigned short);
@@ -91,7 +107,12 @@ public:
     void sendQueuedMessage(std::vector<std::string>&,sf::TcpSocket* client);
     void manage();
     void run();
+
+    void end() {exit(EXIT_SUCCESS);}
     ChatHandler* handler;
+
 };
+void openDLL();
+
 
 #endif

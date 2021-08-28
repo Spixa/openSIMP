@@ -2,6 +2,12 @@
 #include <string>
 #include <sstream>
 
+ServerNetwork* ServerNetwork::m_instance = nullptr;
+
+void ServerNetwork::sendString(std::string str, sf::TcpSocket* client) {
+    str = "5\x01" + str;
+    send(str.c_str(),str.length()+1, client);
+}
 
 std::string ServerNetwork::convertToString(char* a, int size)
 {
@@ -13,26 +19,63 @@ std::string ServerNetwork::convertToString(char* a, int size)
     return s;
 }
 
-ServerNetwork::ServerNetwork(unsigned short port) : listen_port(port) {
+ServerNetwork::ServerNetwork() {
+
+}
+
+ServerNetwork* ServerNetwork::Get() {
+        if (!m_instance) {
+            m_instance = new ServerNetwork;
+        }
+
+        return m_instance;  
+}
+
+void ServerNetwork::init(unsigned short port) {
+    listen_port = port;
+
     logl("Server: Server has begun on port " + std::to_string(port));
     if (listener.listen(listen_port) != sf::Socket::Done) {
         logl("Error > Could not establish listener.");
     }
-    init();
+    cmd_executor = new Executor();
+
+    /*
+        From @Spixa:
+        How to register new commands.
+        In order to register commands you need to use the getCommand() funtion which needs a string for the command itself
+        and a function to execute upon running it, I made use of lambdas.  
+        Note: available arguments during a functions are: TcpSocket* sock, size_t iteration_pisiton
+        
+        
+    */
+
+    getCommand("help",CommandLambda { 
+        std::string to_send;
+        to_send = "Avail commands: ";
+        for (auto x : cmd_executor->getVector()) {
+            to_send += x->str() + " ";
+        }
+        sendString(to_send, sock);
+        return cmd_status::OK;
+    })->setExecutor(cmd_executor);
+
+    getCommand("suicide",CommandLambda {
+        broadcastString(clientid_array[iterator] + " killed themselves.", sock->getRemoteAddress(), sock->getRemotePort());
+        disconnectClient(sock, iterator, DisconnectReason::DisconnectKick);
+        return cmd_status::OK;
+    })->setExecutor(cmd_executor);
+
+    getCommand("plugins", CommandLambda {
+        sendString("Plugins (0): ", sock);
+        return cmd_status::OK;
+    })->setExecutor(cmd_executor);
 }
 
-void ServerNetwork::init() {
-
-    chatSend = new Property(chatSend_str);
-    handler = new ChatHandler();
-    objs.push_back(handler);
-
-    for (auto x : objs) {
-        x->start();
-    }
-
+void ServerNetwork::broadcastString(std::string str, sf::IpAddress ip, unsigned short port) {
+    str = "6\x01" + str; 
+    broadcast(str.c_str(), ip, port);
 }
-
 void ServerNetwork::connectClients(std::vector<sf::TcpSocket*>* client_array) {
     while (true) {
         sf::TcpSocket* new_client = new sf::TcpSocket();
@@ -75,7 +118,7 @@ void ServerNetwork::disconnectClient(sf::TcpSocket* socket_pointer, size_t posit
         case DisconnectReason::DisconnectUnnamed:
             leaveMessage += "Unnamed user";
             logl("Unnamed user");
-            logl("Kicked junk client trying to send message.");
+            logl("Kicked junk client trying to send message.rip");
         break;
     }
     
@@ -135,10 +178,6 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
         disconnectClient(client, iterator,DisconnectReason::DisconnectLeave);
     }
     else if (received_bytes > 0) {
-
-  
-  
-
             if (!check(received_data)) {
                 if (clientid_array[iterator] != "\x96") logl("Invalid send from " << clientid_array[iterator]);
                 else logl("Invalid send from " << client->getRemoteAddress() << ":" << client->getRemotePort());
@@ -157,15 +196,12 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
                 return;
             }
             
-
             std::stringstream sending_string;      
 
 
             // Handle receives
             if ((strncmp("0",received_data,1) == 0)) {
                     if(!handleSend(received_data,sending_string,client,iterator)) return;
-                  
-    
             } else
             if ((strncmp("3",received_data,1) == 0)) {
                 handleNick(received_data,client,iterator);
@@ -174,10 +210,11 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
                 
             } else
             if ((strncmp("4",received_data,1) == 0)) {
-                
+                logl("[INFO] Denied request.");
             } else
             if ((strncmp("5",received_data,1) == 0)) {
                 handleCommand(received_data,client,iterator);
+                return;
             }
             else {
                 disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
@@ -213,25 +250,33 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
 void ServerNetwork::handleCommand(char* received_data,sf::TcpSocket* client, size_t iterator) {
     memmove(received_data, received_data+1, strlen (received_data+1) + 1);
     char* message = received_data;
-    if (strcmp(message,"list") == 0) {
-        std::stringstream list_all;
-        list_all << "5\x01\nList of online users: ";
-        for (auto x: clientid_array) {
-            if (x != "\x96") list_all << x << " ";
-        }
-        send(list_all.str().c_str(),list_all.str().length() + 1,client);
-    } else
-    if (strcmp(message,"getpos") == 0){
-        std::stringstream pos;
-        pos << "5\x01 Current pos: " << std::to_string(iterator);
-        send(pos.str().c_str(),pos.str().length() + 1, client);
-    } else
-    if (strcmp(message,"help") == 0) {
-        std::stringstream say;
-        say << "5\x01You can currently reach these commands: \n\thelp \n\tgetpos \n\tlist";
-        send(say.str().c_str(),say.str().length() +1, client);
-    }
- 
+    // if (strcmp(message,"list") == 0) {
+    //     std::stringstream list_all;
+    //     list_all << "5\x01\nList of online users: ";
+    //     for (auto x: clientid_array) {
+    //         if (x != "\x96") list_all << x << " ";
+    //     }
+    //     send(list_all.str().c_str(),list_all.str().length() + 1,client);
+    // } else
+    // if (strcmp(message,"getpos") == 0){
+    //     std::stringstream pos;
+    //     pos << "5\x01 Current pos: " << std::to_string(iterator);
+    //     send(pos.str().c_str(),pos.str().length() + 1, client);
+    // } else
+    // if (strcmp(message,"help") == 0) {
+    //     std::stringstream say;
+    //     say << "5\x01You can currently reach these commands: \n\thelp \n\tgetpos \n\tlist";
+    //     send(say.str().c_str(),say.str().length() +1, client);
+    // }
+    // if (strcmp(message,"hidden_command") == 0) {
+    //     std::stringstream say;
+    //     say << "5\x01 Damn you so quirky girl";
+    //     send(say.str().c_str(),say.str().length() +1, client);
+    //     disconnectClient(client,iterator,DisconnectReason::DisconnectLeave);
+    // }
+    logl(clientid_array[iterator] << " issued command: " << message);
+    cmd_executor->iterate(std::string(message), client, iterator);
+  
 }
 bool ServerNetwork::handleSend(char* received_data,std::stringstream& sending_string,sf::TcpSocket* client, size_t iterator) {
     memmove(received_data, received_data+1, strlen (received_data+1) + 1);
@@ -253,8 +298,6 @@ bool ServerNetwork::handleSend(char* received_data,std::stringstream& sending_st
         disconnectClient(client,iterator,DisconnectReason::DisconnectUnnamed);
         return false;
     }
-
-
     
     // Normal
     return true;
@@ -317,9 +360,8 @@ void ServerNetwork::handleRequestedConsole(sf::TcpSocket* sock,size_t iterpos) {
 }
 
 void ServerNetwork::updateObjs() {
-    *chatSend = Property(chatSend_str);
     for (auto x : objs) {
-        x->update(*chatSend);
+ 
     }
 }
 
@@ -360,3 +402,18 @@ void ServerNetwork::run() {
     // Manage thread for receiving and sending
     manage();
 }
+
+
+#ifdef __unix__  
+
+void openDLL() {
+    
+}
+
+#elif defined(_WIN32) || defined(WIN32)    
+
+void openDLL() {
+    
+}
+
+#endif

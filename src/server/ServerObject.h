@@ -11,6 +11,10 @@
 #include <algorithm>
 #include <iostream>
 #include "assert.h"
+#include "ServerNetwork.h"
+#include "ChatHandler.h"
+
+class ServerNetwork;
 
 class Property {
 public:
@@ -60,7 +64,7 @@ public:
 	ServerObject* addObject(ServerObject* object);
 	ServerObject* findObjectByName(const std::string& name);
 
-    
+	ServerNetwork* server;
 
     void moveToBack();
 	void moveToFront();
@@ -145,5 +149,16 @@ private:
 
 };
 
+class ChatHandler : public ServerObject {
+public:
+    ChatHandler();
+    void start();
+    void update(Property& property);
+
+    simp::updater_void checkMessage(); 
+    simp::updater_void let_property(Property& prop);
+
+    Property* sharedString;
+};
 
 #endif
