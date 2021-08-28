@@ -245,6 +245,11 @@ fn main() {
         _ => false,
     });
 
+    {
+        let textbox = textbox.lock().unwrap();
+        textbox.insert(format!("[Info]: Welcome! do \".help\" for help with all client and server commands\n").as_str());
+    }
+
     /*
     wind.handle(move |_, event| match event {
         Event::Focus => {
@@ -456,7 +461,13 @@ fn main() {
 
                 if message.value().is_empty() {
                     //dialog::alert(center().0, center().1, "Cannot send an empty message!");
-                } else if message.value().trim() == "/op" {
+                } else if message.value().trim() == ".help" {
+                    {
+                        let textbox = textbox.lock().unwrap();
+                        textbox.insert(format!("[Info]:\nClient commands: .help .op, .uwuify\nServer: do /help\nTypes of system messages: Info (from the client), Server (response from the server)\n").as_str());
+                    }
+                    message.set_value("");
+                } else if message.value().trim() == ".op" {
                     {
                         let textbox = textbox.lock().unwrap();
                         textbox.insert(format!("[Info]: Requested operator\n").as_str());
@@ -468,7 +479,7 @@ fn main() {
                             .unwrap();
                     }
                     message.set_value("");
-                } else if message.value().trim() == "/uwuify" {
+                } else if message.value().trim() == ".uwuify" {
                     if !uwuify {
                         uwuify = true;
                         {
@@ -481,12 +492,6 @@ fn main() {
                             let textbox = textbox.lock().unwrap();
                             textbox.insert(format!("[Info]: uwuifier OFF!\n").as_str());
                         }
-                    }
-                    message.set_value("");
-                } else if message.value().trim() == "/help" {
-                    {
-                        let textbox = textbox.lock().unwrap();
-                        textbox.insert(format!("[Info]:\nClient commands: /op, /uwuify\nServer: /list, /getpos\nTypes of system messages: Info (from the client), Server (response from the server)\n").as_str());
                     }
                     message.set_value("");
                 } else if message.value().chars().next().unwrap() == '/' {
