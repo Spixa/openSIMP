@@ -1,4 +1,4 @@
-#include "Lexer.h"
+#include <server/commands/lexer.h>
 
 void Lexer::lex(std::string str, std::string arg[], char seprator) {
     std::string word = "";

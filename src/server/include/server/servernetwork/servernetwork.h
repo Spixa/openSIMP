@@ -10,7 +10,7 @@
 
 #endif
 
-
+// stdafx
 #include <iostream>
 #include <thread>
 #include <vector>
@@ -21,8 +21,10 @@
 #include <cstring>
 #include <map>
 #include <unordered_map>
-#include "Command.h"
-#include "Executor.h"
+
+// from this project
+#include <server/commands/executor.h>
+#include <server/commands/command.h>
 
 #define MAX_RAW_DATA 256 //Max bytes supported on Raw Data mode
 

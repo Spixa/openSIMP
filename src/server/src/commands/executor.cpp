@@ -1,7 +1,7 @@
-#include "Executor.h"
-#include "Command.h"
-#include "ServerNetwork.h"
-#include "Lexer.h"
+#include <server/commands/executor.h>
+#include <server/commands/command.h>
+#include <server/servernetwork/servernetwork.h>
+#include <server/commands/lexer.h>
 
 // stdafx
 #include <iostream>

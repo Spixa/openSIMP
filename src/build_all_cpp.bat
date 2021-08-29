@@ -7,7 +7,7 @@ del susclient.exe
 echo =======================
 echo    Compiling server
 echo =======================
-g++ server/ServerNetwork.cpp server/ServerNetwork.h server/server.cpp  server/ServerObject.cpp server/ChatHandler.cpp -o susserver -lpthread -lsfml-system -lsfml-network -LC:\SFML\lib -IC:\SFML\include -W -Wall -std=c++11
+g++ -I./server/include/ server/src/commands/command.cpp server/src/commands/executor.cpp server/src/commands/lexer.cpp server/src/servernetwork/servernetwork.cpp server/src/server.cpp -o server -lpthread -lsfml-system -lsfml-network -LC:\SFML\lib -IC:\SFML\include -W -Wall -std=c++11
 echo =======================
 echo    Compiling client
 echo =======================

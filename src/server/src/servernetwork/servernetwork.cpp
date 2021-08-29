@@ -1,4 +1,4 @@
-#include "ServerNetwork.h"
+#include <server/servernetwork/servernetwork.h>
 #include <string>
 #include <sstream>
 

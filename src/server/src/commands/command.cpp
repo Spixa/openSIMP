@@ -1,5 +1,4 @@
-
-#include "Command.h"
+#include <server/commands/command.h>
 
 ExecutableCommand::ExecutableCommand(std::string str,std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator, std::string args[])> f)
     : m_constructed(true)
