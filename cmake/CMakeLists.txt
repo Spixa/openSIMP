@@ -22,7 +22,7 @@ find_package(Threads REQUIRED)
 
 find_package(SFML 2.5 COMPONENTS graphics window system network REQUIRED)
 
-add_executable(openSIMPserver ../src/server/server.cpp ../src/server/ServerNetwork.cpp ../src/server/Command.cpp ../src/server/Executor.cpp)
+add_executable(openSIMPserver ../src/server/server.cpp ../src/server/ServerNetwork.cpp ../src/server/Command.cpp ../src/server/Executor.cpp ../src/server/Lexer.cpp)
 
 target_include_directories(openSIMPserver PRIVATE ../src/server)
 target_link_libraries(openSIMPserver sfml-graphics sfml-window sfml-system sfml-network ${CMAKE_THREAD_LIBS_INIT} -static)

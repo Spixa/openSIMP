@@ -1,5 +1,5 @@
 #include "ClientNetwork.h"
-
+#include <cstdlib>
 #include "Utils.hpp"
 
 ClientNetwork::ClientNetwork() {
@@ -19,7 +19,8 @@ void ClientNetwork::connect(const char* address, unsigned short port) {
 
 void ClientNetwork::receive(sf::TcpSocket* socket) {
     while (true) {
-        if (socket->receive(buffer,sizeof(buffer),received) == sf::Socket::Done) {
+        sf::Socket::Status status = socket->receive(buffer,sizeof(buffer),received);
+        if (status == sf::Socket::Done) {
             
             logl(received << " bytes were received");
             log("\tReceived: ");
@@ -32,6 +33,9 @@ void ClientNetwork::receive(sf::TcpSocket* socket) {
                 }
                 else log(buffer[r]);
             logl('\n' << counter << " receivees in total.");
+        } else if (status == sf::Socket::Disconnected) {
+            log("You were disconnected from the server.");
+            ::exit(0);
         }
         std::this_thread::sleep_for((std::chrono::milliseconds)100);
     }
@@ -57,25 +61,16 @@ void ClientNetwork::run() {
     while (true) {
         if (isConnected) {
             std::string user_input;
-            std::string args[512];
             std::getline(std::cin, user_input);
 
-            if (user_input == "switch_mode") {
-                if (mode == MessageType::ChatMessageType) {
-                    mode = MessageType::CommandResponseType;
-                } else mode = MessageType::ChatMessageType;
+            char* tosend = const_cast<char*>(user_input.c_str());
 
-                
-            }
-            if (mode == MessageType::ChatMessageType) {
-                user_input = "0" + user_input;
-                send(user_input);
-            } else
-            if (mode == MessageType::CommandResponseType) {
+            if (tosend[0] == '/') {
+                memmove(tosend, tosend+1, strlen (tosend+1) + 1);
                 user_input = "5" + user_input;
-                send(user_input);
-            }
+            } else user_input = "0" + user_input;
 
+            send(user_input);
             
         }
     }
