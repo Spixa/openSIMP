@@ -4,8 +4,8 @@
 *.dll
 *.a
 exc-*
-src/susserver
-src/susclient
+src/simpserver
+src/simpclient
 src/clients/rust-gui/target
 util/susrust/target
 src/.vscode

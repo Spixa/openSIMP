@@ -7,7 +7,8 @@
 #include <functional>
 #include <assert.h>
 
-#include "Executor.h"
+//#include <server/commands/command.h>
+class Executor;
 
 namespace simp {
     enum class cmd_status {
