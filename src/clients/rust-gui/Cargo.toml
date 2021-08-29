@@ -9,6 +9,6 @@ lto = true
 
 [dependencies]
 trust-dns-resolver = "0.20.3"
-fltk = { version = "1.1", features = ["fltk-bundled"] }
+fltk = "1.1.13"
 fltk-theme = "0.1"
 notify-rust = { version = "4", optional = true }
