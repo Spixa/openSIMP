@@ -28,7 +28,7 @@
 
 #define logl(x) std::cout << x << std::endl
 #define log(x) std::cout << x
-#define CommandLambda [&](sf::TcpSocket* sock,size_t iterator)
+#define CommandLambda [&](sf::TcpSocket* sock,size_t iterator, std::string args[])
 class ServerObject;
 class ChatHandler;
 

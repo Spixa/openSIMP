@@ -45,16 +45,24 @@ void ServerNetwork::init(unsigned short port) {
         How to register new commands.
         In order to register commands you need to use the getCommand() funtion which needs a string for the command itself
         and a function to execute upon running it, I made use of lambdas.  
-        Note: available arguments during a functions are: TcpSocket* sock, size_t iteration_pisiton
+        Note: available arguments during a functions are: TcpSocket* sock, size_t iteration_pisiton, std::string args[]
         
         
     */
 
+   // Add commands:
+
     getCommand("help",CommandLambda { 
         std::string to_send;
-        to_send = "Avail commands: ";
-        for (auto x : cmd_executor->getVector()) {
-            to_send += x->str() + " ";
+        if (args[1] == "") {
+            to_send = "Avail commands: ";
+            for (auto x : cmd_executor->getVector()) {
+                to_send += '/' + x->str() + ' ';
+            }
+        } else {
+            to_send += "Multiple args is not supported by the command: help"; 
+            sendString(to_send, sock);
+            return cmd_status::ERROR;
         }
         sendString(to_send, sock);
         return cmd_status::OK;

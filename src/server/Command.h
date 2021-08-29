@@ -19,18 +19,18 @@ namespace simp {
 
 class ExecutableCommand {
 public:
-    ExecutableCommand(std::string str,std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator)> f);
+    ExecutableCommand(std::string str,std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator, std::string[])> f);
     void setExecutor(Executor* exectr);
-    void execute(sf::TcpSocket* sock, size_t iter);
+    simp::cmd_status execute(sf::TcpSocket* sock, size_t iter, std::string[]);
     std::string str();
 
 private:
     bool m_constructed = false;
-    std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator)> fn;
+    std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator, std::string[])> fn;
     std::string cmd;
 };
 
-ExecutableCommand* getCommand(std::string str,std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator)> f);
+ExecutableCommand* getCommand(std::string str,std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator, std::string[])> f);
 
 
 

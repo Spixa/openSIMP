@@ -1,7 +1,11 @@
 #include "Executor.h"
 #include "Command.h"
 #include "ServerNetwork.h"
+#include "Lexer.h"
+
+// stdafx
 #include <iostream>
+
 void Executor::pushNewCommand(ExecutableCommand* e) {
     // check duplicate
     for (auto x : m_cmds) {
@@ -12,10 +16,15 @@ void Executor::pushNewCommand(ExecutableCommand* e) {
 
 void Executor::iterate(std::string e, sf::TcpSocket* sock, size_t iter) {
     bool executed = false;
+    std::string command[512];
+    Lexer::lex(e, command, ' ');
+
     for (auto x : m_cmds) {
-        if (e == x->str()) {
+        if (command[0] == x->str()) {
             assert(executed == false); // Duplicated command!
-            x->execute(sock,iter);
+            if (x->execute(sock, iter, command) == cmd_status::ERROR) {
+                logl("an internal error occured while executing command (by: ServerExecutor." << sock->getRemoteAddress().toString() << ".send_cmd<" << command[0] << ".cmd>");
+            }
             executed = true;
         }
     }
