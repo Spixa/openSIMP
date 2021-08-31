@@ -11,6 +11,6 @@ g++ -I./server/include/ server/src/commands/command.cpp server/src/commands/exec
 echo =======================
 echo    Compiling client
 echo =======================
-g++ clients/cpp/ClientNetwork.cpp clients/cpp/ClientNetwork.h clients/cpp/PacketType.h clients/cpp/client.cpp clients/cpp/Utils.hpp -o susclient -lpthread -lsfml-system -lsfml-network -LC:\SFML\lib -IC:\SFML\include
+g++ clients/cpp/ClientNetwork.cpp clients/cpp/ClientNetwork.h clients/cpp/client.cpp clients/cpp/Utils.hpp -o susclient -lpthread -lsfml-system -lsfml-network -LC:\SFML\lib -IC:\SFML\include
 echo Process done
 

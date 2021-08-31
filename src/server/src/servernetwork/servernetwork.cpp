@@ -1,5 +1,7 @@
 #include <server/servernetwork/servernetwork.h>
 #include <string>
+#include <regex>
+#include <iterator>
 #include <sstream>
 
 ServerNetwork* ServerNetwork::m_instance = nullptr;
@@ -34,9 +36,9 @@ ServerNetwork* ServerNetwork::Get() {
 void ServerNetwork::init(unsigned short port) {
     listen_port = port;
 
-    logl("Server: Server has begun on port " + std::to_string(port));
+    logl("Server has begun on port " + std::to_string(port));
     if (listener.listen(listen_port) != sf::Socket::Done) {
-        logl("Error > Could not establish listener.");
+        error("Could not establish listener.");
     }
     cmd_executor = new Executor();
 
@@ -46,12 +48,9 @@ void ServerNetwork::init(unsigned short port) {
         In order to register commands you need to use the getCommand() funtion which needs a string for the command itself
         and a function to execute upon running it, I made use of lambdas.  
         Note: available arguments during a functions are: TcpSocket* sock, size_t iteration_pisiton, std::string args[]
-        
-        
     */
 
    // Add commands:
-
     getCommand("help",CommandLambda { 
         std::string to_send;
         if (args[1] == "") {
@@ -97,39 +96,38 @@ void ServerNetwork::connectClients(std::vector<sf::TcpSocket*>* client_array) {
             
         }
         else {
-            logl("Server failed to accept new sockets\n\trestart the server");
+            error("Server failed to accept new sockets\n\trestart the server");
             delete(new_client);
             break;
         }
     }
 }
 
-void ServerNetwork::disconnectClient(sf::TcpSocket* socket_pointer, size_t position, DisconnectReason reason) {
-    log("Server > " << socket_pointer->getRemoteAddress() << ":" << socket_pointer->getRemotePort() << " disconnected for ");
-
-    
+void ServerNetwork::disconnectClient(sf::TcpSocket* socket_pointer, size_t position, DisconnectReason reason) {  
     std::string leaveMessage;
-
-    if (clientid_array[position] != "\x96") leaveMessage = "2\x01" + clientid_array[position] + " disconnected for ";
-    else  leaveMessage = "2\x01" + socket_pointer->getRemoteAddress().toString() + ":" + std::to_string(socket_pointer->getRemotePort()) + " disconnected for ";
-
-
+    if (clientid_array[position] != "\x96") leaveMessage = clientid_array[position] + " disconnected for ";
+    else  leaveMessage = socket_pointer->getRemoteAddress().toString() + ":" + std::to_string(socket_pointer->getRemotePort()) + " disconnected for ";
     switch (reason) {
         case DisconnectReason::DisconnectLeave:
-            leaveMessage += "Generic Leave Activity";
-            logl("Generic Leave Activity");
+            leaveMessage += "requesting leave.";
         break;
         case DisconnectReason::DisconnectKick:
-            leaveMessage += "Nuisance Activities";
-            logl("Undefined behavior");
+            leaveMessage += "forcibly being kicked by an admin or automatic server moderation.";
         break;
         case DisconnectReason::DisconnectUnnamed:
-            leaveMessage += "Unnamed user";
-            logl("Unnamed user");
-            logl("Kicked junk client trying to send message.rip");
+            leaveMessage += "being unnamed.";
+            warn("Previous client \"" << socket_pointer->getRemoteAddress() << ":" << std::to_string(socket_pointer->getRemotePort()) << "\" was kicked due to being unnamed.");
+        break;
+        default:
+            leaveMessage += "an unknown odd reason.";
         break;
     }
+
     
+    logl(leaveMessage);
+    // Add "2" to signify packet type as LeavePacket
+    leaveMessage = "2\x01" + leaveMessage; 
+    // broadcasts leave message
     broadcast(leaveMessage.c_str(),socket_pointer->getRemoteAddress(), socket_pointer->getRemotePort());
 
     socket_pointer->disconnect();
@@ -159,9 +157,8 @@ bool ServerNetwork::broadcast(const char* data, sf::IpAddress exclude_address, u
 }
 
 bool ServerNetwork::send(const char* data, size_t counter, sf::TcpSocket* to) {
-
     if (to->send(data, counter,counter) != sf::Socket::Done) {
-        logl("Could not send packet on broadcast");
+        error("Could not send most recent packet on stack (from: localhost, to: " << to->getRemoteAddress());
         return false;
     }
     return true;
@@ -187,19 +184,20 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
     }
     else if (received_bytes > 0) {
             if (!check(received_data)) {
-                if (clientid_array[iterator] != "\x96") logl("Invalid send from " << clientid_array[iterator]);
-                else logl("Invalid send from " << client->getRemoteAddress() << ":" << client->getRemotePort());
-                logl("Integrity: Remote " << client->getRemoteAddress() << ":" << client->getRemotePort() << " sent an illegal charachter");
+                if (clientid_array[iterator] != "\x96") error("Invalid send from " << clientid_array[iterator]);
+                else error("Invalid send from " << client->getRemoteAddress() << ":" << client->getRemotePort());
+
+                logl("Remote " << client->getRemoteAddress() << ":" << client->getRemotePort() << " sent an illegal charachter");
                 disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
                 return;
             }
 
             if (received_bytes >= 256) {
                 
-                if (clientid_array[iterator] != "\x96") logl("Invalid send from " << clientid_array[iterator]);
-                else logl("Invalid send from " << client->getRemoteAddress() << ":" << client->getRemotePort());
+                if (clientid_array[iterator] != "\x96") error("Invalid send from " << clientid_array[iterator]); 
+                else error("Invalid send from " << client->getRemoteAddress() << ":" << client->getRemotePort());
 
-                logl("Integrity: Remote " << client->getRemoteAddress() << ":" << client->getRemotePort() << " sent too many charachters");
+                logl("Remote " << client->getRemoteAddress() << ":" << client->getRemotePort() << " sent too many charachters");
                 disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
                 return;
             }
@@ -245,12 +243,10 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
             client_message_interval[iterator]->restart();
 
         } else {
-            std::string message = "6\x01 [KoolDawn] Cool it G";
+            std::string message = "6\x01You are sending messages too fast. Cool down.";
             send(message.c_str(),message.length() + 1, client);
-
             // lastQueuer = client;
-            // send_queue.push_back(sending_string.str());
-            
+            // send_queue.push_back(sending_string.str());        
         }
     }
 }
@@ -306,21 +302,34 @@ bool ServerNetwork::handleSend(char* received_data,std::stringstream& sending_st
         disconnectClient(client,iterator,DisconnectReason::DisconnectUnnamed);
         return false;
     }
-    
     // Normal
     return true;
 }
 
+/// \brief Handles nicks
 bool ServerNetwork::handleNick(char* received_data,sf::TcpSocket* client, size_t iterator) {
     memmove(received_data, received_data+1, strlen (received_data+1) + 1);
     // Check whether name already exists
     for(auto i : clientid_array) {
         if (received_data == i) {        
             disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
-            logl("\tAn attempt of connection with an already online alias was blocked.");
+            warn("An attempt of connection with an already online alias was blocked.");
             return false;
         }
-    } 
+    }
+    if (received_data[2] == '\0') {
+        disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
+        warn("Previous remote's alias was too short. (kicked)");
+        return false;
+    }
+
+    std::regex r("^[a-zA-Z0-9_]*$");
+    if (!(std::regex_match(received_data, r))) {
+        disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
+        warn("Previous remote masked themselves to a non-alphanumeric alias. (kicked)");
+        return false;
+    }
+
     char char_array[256] = {'\0'};
     strcpy(char_array,received_data);
     
@@ -328,7 +337,7 @@ bool ServerNetwork::handleNick(char* received_data,sf::TcpSocket* client, size_t
     bool invld_res = (chatSend_str.find_first_not_of(" \t\n\v\f\r") == std::string::npos);
 
     if (invld_res) {
-        std::string message = "6\x01Stop sending empty shit.";
+        std::string message = "6\x01Stop sending empty stuff.";
         send(message.c_str(),message.length() + 1, client);
         return false;
     }
@@ -347,7 +356,7 @@ bool ServerNetwork::handleNick(char* received_data,sf::TcpSocket* client, size_t
 }
 
 void ServerNetwork::handleRequestedConsole(sf::TcpSocket* sock,size_t iterpos) {
-    log("[OP ME]" << sock->getRemoteAddress().toString() << ":" << sock->getRemotePort() << " (AKA:" << clientid_array[iterpos] << "): Remote is requesting to become an operator. [Y/N]");
+    log("op " << sock->getRemoteAddress().toString() << ":" << sock->getRemotePort() << " (AKA:" << clientid_array[iterpos] << "): Remote is requesting to become an operator. [Y/N]");
     char say;
     std::cin >> say;
     switch (say) {

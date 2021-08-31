@@ -30,7 +30,8 @@ private:
     std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator, std::string[])> fn;
     std::string cmd;
 };
-
+/// \brief Accesses a command.
+/// \param std::string, std::function
 ExecutableCommand* getCommand(std::string str,std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator, std::string[])> f);
 
 

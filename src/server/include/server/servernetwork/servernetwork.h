@@ -28,8 +28,10 @@
 
 #define MAX_RAW_DATA 256 //Max bytes supported on Raw Data mode
 
-#define logl(x) std::cout << x << std::endl
-#define log(x) std::cout << x
+#define logl(x) std::cout << "[INFO] " << x << std::endl
+#define log(x) std::cout << "[INFO] " << x
+#define warn(x) std::cout << "[WARN] " << x << std::endl
+#define error(x) std::cout << "[ERROR] " << x << std::endl
 #define CommandLambda [&](sf::TcpSocket* sock,size_t iterator, std::string args[])
 class ServerObject;
 class ChatHandler;

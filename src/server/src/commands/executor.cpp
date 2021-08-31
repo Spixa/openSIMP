@@ -2,7 +2,6 @@
 #include <server/commands/command.h>
 #include <server/servernetwork/servernetwork.h>
 #include <server/commands/lexer.h>
-
 // stdafx
 #include <iostream>
 
@@ -23,7 +22,7 @@ void Executor::iterate(std::string e, sf::TcpSocket* sock, size_t iter) {
         if (command[0] == x->str()) {
             assert(executed == false); // Duplicated command!
             if (x->execute(sock, iter, command) == cmd_status::ERROR) {
-                logl("an internal error occured while executing command (by: ServerExecutor." << sock->getRemoteAddress().toString() << ".send_cmd<" << command[0] << ".cmd>");
+                warn("an internal error occured while executing command.");
             }
             executed = true;
         }
