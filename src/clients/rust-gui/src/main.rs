@@ -1,6 +1,25 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 // disable opening of cmd in windows
 
+// this client was written as a way to learn the rust language itself, gui
+// programming and multithreading so if there are some comments that seem
+// redundant they're things that confused me, so i had to write a comment
+// for them!
+
+// filemap:
+//
+// "gui initialization" -> this region from start to end contains anything
+// relating to initializing the gui, its pretty broad
+//
+// "button definition" -> self-explanatory, contains button definitions and
+// their callbacks
+//
+// "menu definition" -> contains the menu declaration, its frame, the
+// items and their callbacks aswell
+//
+// "clientside flags" -> this contains variables that are used as flags for
+// the client, for example toggling the builtin uwuifier
+
 use fltk::{
     app,
     button::{Button, ToggleButton},
@@ -69,6 +88,7 @@ fn main() {
         textbox.set_pos(txbx_x, txbx_y - 10);
 
         textbox.set_buffer(TextBuffer::default());
+        textbox.wrap_mode(fltk::text::WrapMode::AtBounds, 0);
     }
 
     /* start button definition */
@@ -104,7 +124,6 @@ fn main() {
         s.send(Message::SendMessage);
     });
     /* end button definition */
-    let textbox_ref = textbox.clone();
 
     /* start menu definition */
     let mut menu = menu::MenuBar::default().with_size(730, 25);
@@ -159,8 +178,6 @@ fn main() {
         _ => false,
     });
 
-    // insert welcome message into textbox, seperated from the initialization
-    // for easier editing in the future
     {
         let textbox = textbox.lock().unwrap();
         let welcome_msg = concat!(
@@ -204,6 +221,12 @@ fn main() {
     // autofocus input box on launch
     message.take_focus().unwrap();
 
+    // clone the Arc<Mutex<TextDisplay>> as a reference
+    // because of "https://doc.rust-lang.org/stable/std/sync/struct.Arc.html#impl-Clone"
+    // if you clone an arc it only clones the arc *pointer* so this is actually a reference
+    // which you can use in other threads safely, pretty nice!
+    let textbox_ref = textbox.clone();
+
     s.send(Message::Login);
 
     std::thread::spawn(move || loop {
@@ -232,7 +255,7 @@ fn main() {
         let packet = network::parse_packet(&buf);
         match packet {
             Packet::MessagePacket(username, message) => {
-                let text = format!("{}: {}\n", &username, &message);
+                let text = format!("<{}>: \"{}\"\n", &username, &message);
                 {
                     let mut textbox = textbox_ref.lock().unwrap();
                     let txbxlen = textbox.buffer().unwrap().length();
@@ -405,7 +428,7 @@ fn main() {
                     }
                     {
                         let textbox = textbox.lock().unwrap();
-                        textbox.insert(format!("{}: {}\n", uname, string).as_str());
+                        textbox.insert(format!("<{}>: '{}'\n", uname, string).as_str());
                     }
                     {
                         writer_tcpstream
