@@ -255,7 +255,7 @@ fn main() {
         let packet = network::parse_packet(&buf);
         match packet {
             Packet::MessagePacket(username, message) => {
-                let text = format!("<{}>: \"{}\"\n", &username, &message);
+                let text = format!("<{}>: '{}'\n", &username, &message);
                 {
                     let mut textbox = textbox_ref.lock().unwrap();
                     let txbxlen = textbox.buffer().unwrap().length();
