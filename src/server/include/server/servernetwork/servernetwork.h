@@ -25,11 +25,13 @@
 // from this project
 #include <server/commands/executor.h>
 #include <server/commands/command.h>
+#include <server/cryptography/cryptography.h>
 
-#define MAX_RAW_DATA 256 //Max bytes supported on Raw Data mode
+
+#define MAX_RAW_DATA 4096 //Max bytes supported on Raw Data mode
 
 #define logl(x) std::cout << "[INFO] " << x << std::endl
-#define log(x) std::cout << "[INFO] " << x
+#define log(x) std::cout << x
 #define warn(x) std::cout << "[WARN] " << x << std::endl
 #define error(x) std::cout << "[ERROR] " << x << std::endl
 #define CommandLambda [&](sf::TcpSocket* sock,size_t iterator, std::string args[])
@@ -43,7 +45,12 @@ enum class DisconnectReason {
     DisconnectUnnamed = 2,
 
 };
-
+enum AuthStatus {
+        KeyReceived = 1,
+        Done = 2,
+        Failed = 3,
+        Undone = 4,
+};
 enum class MessageType {
     ChatMessageType = 0,
     JoinMessageType = 1,
@@ -60,6 +67,8 @@ class ServerNetwork {
     std::vector<std::string> clientid_array;
     std::vector<bool> client_op_array;
     std::vector<sf::Clock*> client_message_interval;
+    std::vector<AuthStatus> client_authenticated_array;
+
     unsigned short listen_port;
 
     std::vector<ServerObject*> objs;
@@ -72,6 +81,7 @@ class ServerNetwork {
     static ServerNetwork* m_instance;
 
     Executor* cmd_executor;
+    Cryptography* crypt;
 
     ServerNetwork();
     ServerNetwork(ServerNetwork const&){}

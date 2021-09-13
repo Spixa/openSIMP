@@ -35,6 +35,8 @@ ServerNetwork* ServerNetwork::Get() {
 
 void ServerNetwork::init(unsigned short port) {
     listen_port = port;
+    logl("Generating keypairs...");
+    crypt = new Cryptography();
 
     logl("Server has begun on port " + std::to_string(port));
     if (listener.listen(listen_port) != sf::Socket::Done) {
@@ -91,9 +93,13 @@ void ServerNetwork::connectClients(std::vector<sf::TcpSocket*>* client_array) {
             client_array->push_back(new_client);
             clientid_array.push_back("\x96");
             client_op_array.push_back(false);
+            client_authenticated_array.push_back(AuthStatus::Undone);
             client_message_interval.push_back(new sf::Clock());
             logl("Unregistered " << new_client->getRemoteAddress() << ":" << new_client->getRemotePort() << " was accepted [" << client_array->size() << "]");
-            
+            std::stringstream str;
+            str << crypt->getPublicKey();
+
+            send(str.str().c_str(), str.str().length() + 1, new_client);
         }
         else {
             error("Server failed to accept new sockets\n\trestart the server");
@@ -134,6 +140,8 @@ void ServerNetwork::disconnectClient(sf::TcpSocket* socket_pointer, size_t posit
     delete(socket_pointer);
     client_array.erase(client_array.begin() + position);
     clientid_array.erase(clientid_array.begin() + position);
+    client_op_array.erase(client_op_array.begin() + position);
+    client_authenticated_array.erase(client_authenticated_array.begin() + position);
     client_message_interval.erase(client_message_interval.begin() + position);
 }
 
@@ -183,6 +191,24 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
         disconnectClient(client, iterator,DisconnectReason::DisconnectLeave);
     }
     else if (received_bytes > 0) {
+            // Unathenticated logic
+            if (client_authenticated_array[iterator] == AuthStatus::Undone) {
+                // key
+                secure_vector<uint8_t> v;
+                try {
+                  v = crypt->RSA_decrypt(received_data);
+                } catch(std::exception e) {
+                    logl("CXX exception: " << e.what() << "\n\tat " << "botan.decrypt\nMoving on...");
+                    return;
+                }
+                log("Received: " );
+                for (auto x : v)
+                    log(x);
+                log("\n");
+
+                return;
+            } 
+
             if (!check(received_data)) {
                 if (clientid_array[iterator] != "\x96") error("Invalid send from " << clientid_array[iterator]);
                 else error("Invalid send from " << client->getRemoteAddress() << ":" << client->getRemotePort());

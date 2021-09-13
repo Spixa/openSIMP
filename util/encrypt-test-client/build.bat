@@ -1,0 +1,1 @@
+g++ main.cpp cryptography.cpp -o program.exe -lsfml-system -lsfml-network -lbotan-3 -L..\..\src\server\deps\lib -I..\..\src\server\deps\include
