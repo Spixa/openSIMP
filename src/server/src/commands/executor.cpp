@@ -19,7 +19,7 @@ void Executor::iterate(std::string e, sf::TcpSocket* sock, size_t iter) {
     Lexer::lex(e, command, ' ');
 
     for (auto x : m_cmds) {
-        if (command[0] == x->str()) {
+        if (command[0]  == x->str()) {
             assert(executed == false); // Duplicated command!
             if (x->execute(sock, iter, command) == cmd_status::ERROR) {
                 warn("an internal error occured while executing command.");

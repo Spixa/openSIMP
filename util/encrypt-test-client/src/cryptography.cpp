@@ -1,4 +1,4 @@
-#include "cryptography.h"
+      #include "cryptography.h"
 
 Cryptography::Cryptography() : rng(), kp(new Botan::RSA_PrivateKey(rng, 4096)) {
       enc = Cipher_Mode::create("AES-256/GCM", ENCRYPTION);
@@ -56,8 +56,7 @@ std::unordered_map<std::string, std::string> Cryptography::decrypt(const std::st
           map["msg"] = hex_encode(output); 
 
          return map;
-}
-
+}     
 
 void Cryptography::pushNewClientKey(const std::string& key) {
 

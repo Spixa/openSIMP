@@ -10,17 +10,21 @@
 
 #endif
 
-// stdafx
+// std
 #include <iostream>
 #include <thread>
 #include <vector>
 #include <chrono>
 #include <string>
-#include <SFML/Network.hpp>
 #include <memory.h>
 #include <cstring>
 #include <map>
 #include <unordered_map>
+
+
+// ext
+#include <SFML/Network.hpp>
+#include <yaml-cpp/yaml.h>
 
 // from this project
 #include <server/commands/executor.h>
@@ -30,8 +34,8 @@
 
 #define MAX_RAW_DATA 4096 //Max bytes supported on Raw Data mode
 
-#define logl(x) std::cout << "[INFO] " << x << std::endl
-#define log(x) std::cout << x
+#define __logl(x) std::cout << "[INFO] " << x << std::endl
+#define __log(x) std::cout << x
 #define warn(x) std::cout << "[WARN] " << x << std::endl
 #define error(x) std::cout << "[ERROR] " << x << std::endl
 #define CommandLambda [&](sf::TcpSocket* sock,size_t iterator, std::string args[])
@@ -61,6 +65,11 @@ enum class MessageType {
     DirectMessage = 6,
 };
 
+struct UserData {
+    std::string username;
+    std::string password;
+};
+
 class ServerNetwork {
     sf::TcpListener listener;
     std::vector<sf::TcpSocket*> client_array;
@@ -68,6 +77,8 @@ class ServerNetwork {
     std::vector<bool> client_op_array;
     std::vector<sf::Clock*> client_message_interval;
     std::vector<AuthStatus> client_authenticated_array;
+
+    std::vector<UserData> registered_users;
 
     unsigned short listen_port;
 
@@ -83,9 +94,13 @@ class ServerNetwork {
     Executor* cmd_executor;
     Cryptography* crypt;
 
+    void openUserdata();
+
     ServerNetwork();
-    ServerNetwork(ServerNetwork const&){}
-    ServerNetwork& operator=(ServerNetwork const&){}
+    ServerNetwork(ServerNetwork const&) = delete;
+    ServerNetwork& operator=(ServerNetwork const&) = delete;
+
+    std::string SERVER_KEY{"2B7E151628AED2A6ABf71589"};
 
 public:
     static ServerNetwork* Get();

@@ -60,7 +60,7 @@ std::unordered_map<std::string, std::string> Cryptography::decrypt(const std::st
 
 
 void Cryptography::pushNewClientKey(const std::string& key) {
-
+      std::cout << "eyes";
       keys.push_back(RSA_PublicKey( BigInt(hex_decode(key)), EXPONENT_MAX));
 
 }
@@ -71,11 +71,17 @@ void Cryptography::pushNewClientKey(const BigInt& bi) {
 
 const std::string Cryptography::RSA_encrypt(size_t iterator, const std::string& plaintext) {
       // Encrypter device
+          std::cout << "g\n";
+
       PK_Encryptor_EME enc_dev(keys[iterator], rng, "PKCS1v15");
+      std::cout << "gg\n";
 
       secure_vector<uint8_t> pt(plaintext.data(), plaintext.data() + plaintext.length());
+      std::cout << "ok";
       std::vector<uint8_t> ct = enc_dev.encrypt(pt, rng);
       
+          std::cout << "ggg\n";
+
       return hex_encode(ct);
 }
 

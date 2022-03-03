@@ -1,0 +1,13 @@
+# Sun 18:34 PM 12/5/21 UTC
+# Encoded in UTF-8
+verify_cache: "#include <opensimp/test.cpp>\
+int main() {\
+return test_c_abi() && test_cxx_abi();\
+}\"
+compile: "g++ -c -o ctest temp.cpp\
+    rm -rf temp.cpp\
+    ./ctest\
+    exit\
+"
+os: "*nix" || "*nux"
+
