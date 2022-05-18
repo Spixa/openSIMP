@@ -12,6 +12,7 @@
 #include <memory>
 #include <unordered_map>
 
+
 #define ERROR_MSG "an internal error occured whilst executing the program"
 
 const int EXPONENT_MAX = 65537;
@@ -20,15 +21,15 @@ using namespace Botan;
 class Cryptography {
 public:
     Cryptography();
-    std::string encrypt(const std::string & str, const char keyhex[]);
-    std::unordered_map<std::string, std::string> decrypt(const std::string& str, const char keyhex[]);
+    secure_vector<uint8_t> encrypt(const std::string & str, const char keyhex[]);
+    std::unordered_map<std::string, secure_vector<uint8_t>> decrypt(const secure_vector<uint8_t>& ct, const char keyhex[]);
     BigInt getPublicKey() {
         return kp.get()->get_n();
     }
     void pushNewClientKey(const std::string& key);
     void pushNewClientKey(const BigInt& bi);
-    const std::string RSA_encrypt(size_t iterator, const std::string&);
-    secure_vector<uint8_t> RSA_decrypt(const std::string&);
+    const std::vector<uint8_t>   RSA_encrypt(size_t iterator, const std::string&);
+    secure_vector<uint8_t> RSA_decrypt(secure_vector<uint8_t>);
 
 public: 
     // Public key container
