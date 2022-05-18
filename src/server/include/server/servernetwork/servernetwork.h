@@ -112,7 +112,7 @@ public:
     void disconnectClient(sf::TcpSocket*, size_t, DisconnectReason);
 
     std::string convertToString(char*,int);
-
+    void registerUser(std::string const& username, std::string const& password);
     
     void sendString(std::string, sf::TcpSocket*);
     void broadcastString(std::string, sf::IpAddress, unsigned short);

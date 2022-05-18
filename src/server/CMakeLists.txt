@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.0.0)
 set(CMAKE_CXX_STANDARD_REQUIRED 17)
 set(CMAKE_)
 project(openSIMP VERSION 0.1.0)
+add_compile_options(-g)
 
 ## If you want to link SFML statically
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)

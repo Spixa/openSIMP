@@ -82,22 +82,6 @@ void ServerNetwork::init(unsigned short port) {
         return cmd_status::OK;
     })->setExecutor(cmd_executor);
 
-
-
-    std::string a2 = "sus";
-    auto d = crypt->encrypt(a2, SERVER_KEY.c_str());
-    
-    auto g = crypt->decrypt(d, SERVER_KEY.c_str());
-    
-    for (auto x : g["iv"]) {
-        std::cout << x;
-    }
-    std::cout << " -- ";
-
-    for (auto x : g["msg"]) {
-        std::cout << x;
-    }
-    std::cout << std::endl;
 }
 
 void ServerNetwork::broadcastString(std::string str, sf::IpAddress ip, unsigned short port) {
@@ -128,6 +112,28 @@ void ServerNetwork::connectClients(std::vector<sf::TcpSocket*>* client_array) {
     }
 }
 
+void ServerNetwork::registerUser(std::string const& username, std::string const& password) {
+    YAML::Emitter out;
+    out << YAML::BeginMap;
+    out << YAML::Key << username;
+        out << YAML::BeginMap;
+        out << YAML::Key << "password";
+        out << YAML::Value << password;
+        out << YAML::EndMap;
+    out << YAML::EndMap;
+
+    std::ifstream getter;
+    getter.open("userdata.yml");
+    std::string buffer, prevFile;
+    while (std::getline(getter, buffer)) {
+        prevFile += buffer + '\n';
+    }
+
+    std::ofstream saver;
+    saver.open("userdata.yml");
+    saver << prevFile + std::string(out.c_str());
+}
+
 void ServerNetwork::disconnectClient(sf::TcpSocket* socket_pointer, size_t position, DisconnectReason reason) {  
     std::string leaveMessage;
     if (clientid_array[position] != "\x96") leaveMessage = clientid_array[position] + " disconnected for ";
@@ -155,11 +161,13 @@ void ServerNetwork::disconnectClient(sf::TcpSocket* socket_pointer, size_t posit
     // broadcasts leave message
     broadcast(leaveMessage.c_str(),socket_pointer->getRemoteAddress(), socket_pointer->getRemotePort());
 
+    if (client_authenticated_array[position] == AuthStatus::Done)
+        crypt->removeClientKey(socket_pointer);
+
     socket_pointer->disconnect();
     delete(socket_pointer);
 
-    if (client_authenticated_array[position] == AuthStatus::Done)
-        crypt->removeClientKey(position);
+ 
 
     client_array.erase(client_array.begin() + position);
     clientid_array.erase(clientid_array.begin() + position);
@@ -181,7 +189,8 @@ bool ServerNetwork::broadcast(const char* data, sf::IpAddress exclude_address, u
                 if (data[counter] != '\0') counter++;
                 else break;
             }
-            if (send(data,counter,client)) succeed = true;
+            if (client_authenticated_array[iterator] == AuthStatus::Done)
+                if (send(data,counter,client)) succeed = true;
             else succeed = false;
         }
     }
@@ -258,13 +267,6 @@ void ServerNetwork::openUserdata()
     YAML::Node config;
     if (std::filesystem::exists("userdata.yml"))
         config = YAML::LoadFile("userdata.yml");
-
-    const std::string username = config["username"].as<std::string>();
-    const std::string password = config["password"].as<std::string>();
-
-    std::cout << "username: " << username << " -- password: " << password << std::endl;
-    std::ofstream fout("userdata.yml");
-    fout << config;
 }
 
 
@@ -353,29 +355,42 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
                         return;
                     }
                 } else {
-                    __logl("Server did not find this username");
-                    disconnectClient(client, iterator, DisconnectReason::DisconnectKick);
-                    __logl("Remote " << client->getRemoteAddress() << ":" << client->getRemotePort() << " sent bad authentication request.");
-                    return;
+                    // __logl("Server did not find this username");
+                    // disconnectClient(client, iterator, DisconnectReason::DisconnectKick);
+                    // __logl("Remote " << client->getRemoteAddress() << ":" << client->getRemotePort() << " sent bad authentication request.");
+                    registerUser(uname, passwd);
+                    if (!nick(uname, client, iterator)) return;
+                    __logl(uname + "is a new user");
+                   
                 }
+                
                 
                 client_authenticated_array[iterator] = AuthStatus::KeyReceived;
                 
                 std::string s{"spb"}; // REQUESTING SEND PUBLIC KEY
                 std::cout << iterator << std::endl;
                 send_unencrypted(s.c_str(),s.length(), client); 
+                
                 return; 
             } 
             else if (client_authenticated_array[iterator] == AuthStatus::KeyReceived) {
-                crypt->pushNewClientKey(BigInt(std::string(received_data)));
+                crypt->pushNewClientKey(client, BigInt(std::string(received_data)));
                 //std::cout << "Got publickeyof(" << iterator << ") == " << received_data << std::endl;
-
-                auto a = crypt->RSA_encrypt(iterator, SERVER_KEY);
-                std::string server_key_str{a.begin(), a.end()};
-                std::cout << server_key_str.length() << std::endl;
+                try {
+                    
+                    auto a = crypt->RSA_encrypt(client, SERVER_KEY);
+                    
+                      std::string server_key_str{a.begin(), a.end()};
                 
-                send_unencrypted(server_key_str.c_str(), server_key_str.length(), client);
+                    send_unencrypted(server_key_str.c_str(), server_key_str.length(), client);
+                    
                 
+                } catch (...) {
+                    std::cout << "gtfo\n";
+                    disconnectClient(client, iterator, DisconnectReason::DisconnectKick);
+                    return;
+                }
+              
                 client_authenticated_array[iterator] = AuthStatus::Done;
                 
                 return;

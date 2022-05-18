@@ -60,19 +60,19 @@ std::unordered_map<std::string, secure_vector<uint8_t>> Cryptography::decrypt(co
 }
 
 
-void Cryptography::pushNewClientKey(const std::string& key) {
-      keys.push_back(RSA_PublicKey( BigInt(hex_decode(key)), EXPONENT_MAX));
+void Cryptography::pushNewClientKey(sf::TcpSocket* sock, const std::string& key) {
+      keys.insert({sock ,RSA_PublicKey( BigInt(hex_decode(key)), EXPONENT_MAX)});
 
 }
 
-void Cryptography::pushNewClientKey(const BigInt& bi) {
-      keys.push_back(RSA_PublicKey( bi, EXPONENT_MAX));
+void Cryptography::pushNewClientKey(sf::TcpSocket* sock, const BigInt& bi) {
+      keys.insert({sock, RSA_PublicKey( bi, EXPONENT_MAX)});
 }
 
-const std::vector<uint8_t> Cryptography::RSA_encrypt(size_t iterator, const std::string& plaintext) {
+const std::vector<uint8_t> Cryptography::RSA_encrypt(sf::TcpSocket* sock, const std::string& plaintext) {
       // Encrypter device
 
-      PK_Encryptor_EME enc_dev(keys[iterator], rng, "PKCS1v15");
+      PK_Encryptor_EME enc_dev(keys.at(sock), rng, "PKCS1v15");
       
 
       secure_vector<uint8_t> pt(plaintext.data(), plaintext.data() + plaintext.length());

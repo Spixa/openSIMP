@@ -11,7 +11,7 @@
 #include <cstdlib>
 #include <memory>
 #include <unordered_map>
-
+#include <SFML/Network.hpp>
 
 #define ERROR_MSG "an internal error occured whilst executing the program"
 
@@ -26,19 +26,19 @@ public:
     BigInt getPublicKey() {
         return kp.get()->get_n();
     }
-    void pushNewClientKey(const std::string& key);
-    void pushNewClientKey(const BigInt& bi);
+    void pushNewClientKey(sf::TcpSocket* sock, const std::string& key);
+    void pushNewClientKey(sf::TcpSocket* sock, const BigInt& bi);
 
-    void removeClientKey(size_t position) {
-        keys.erase(keys.begin() + position);
+    void removeClientKey(sf::TcpSocket* sock) {
+        keys.erase(sock);
     }
 
-    const std::vector<uint8_t>   RSA_encrypt(size_t iterator, const std::string&);
+    const std::vector<uint8_t>   RSA_encrypt(sf::TcpSocket* sock    , const std::string&);
     secure_vector<uint8_t> RSA_decrypt(secure_vector<uint8_t>);
 
 public: 
     // Public key container
-    std::vector<RSA_PublicKey> keys;
+    std::unordered_map<sf::TcpSocket*, RSA_PublicKey> keys;
 private:
     std::unique_ptr<Cipher_Mode> enc;
     std::unique_ptr<Cipher_Mode> dec;
