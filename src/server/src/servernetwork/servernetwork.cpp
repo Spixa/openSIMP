@@ -81,11 +81,28 @@ void ServerNetwork::init(unsigned short port) {
         sendString("Plugins (0): ", sock);
         return cmd_status::OK;
     })->setExecutor(cmd_executor);
+
+
+
+    std::string a2 = "sus";
+    auto d = crypt->encrypt(a2, SERVER_KEY.c_str());
+    
+    auto g = crypt->decrypt(d, SERVER_KEY.c_str());
+    
+    for (auto x : g["iv"]) {
+        std::cout << x;
+    }
+    std::cout << " -- ";
+
+    for (auto x : g["msg"]) {
+        std::cout << x;
+    }
+    std::cout << std::endl;
 }
 
 void ServerNetwork::broadcastString(std::string str, sf::IpAddress ip, unsigned short port) {
     str = "6\x01" + str; 
-    broadcast(str.c_str(), ip, port);
+    broadcast(str.c_str(), ip, port); // broadcasts
 }
 void ServerNetwork::connectClients(std::vector<sf::TcpSocket*>* client_array) {
     while (true) {
@@ -101,7 +118,7 @@ void ServerNetwork::connectClients(std::vector<sf::TcpSocket*>* client_array) {
             std::stringstream str;
             str << crypt->getPublicKey();
 
-            send(str.str().c_str(), str.str().length() + 1, new_client);
+            send_unencrypted(str.str().c_str(), str.str().length() + 1, new_client);
         }
         else {
             error("Server failed to accept new sockets\n\trestart the server");
@@ -140,11 +157,17 @@ void ServerNetwork::disconnectClient(sf::TcpSocket* socket_pointer, size_t posit
 
     socket_pointer->disconnect();
     delete(socket_pointer);
+
+    if (client_authenticated_array[position] == AuthStatus::Done)
+        crypt->removeClientKey(position);
+
     client_array.erase(client_array.begin() + position);
     clientid_array.erase(clientid_array.begin() + position);
     client_op_array.erase(client_op_array.begin() + position);
     client_authenticated_array.erase(client_authenticated_array.begin() + position);
     client_message_interval.erase(client_message_interval.begin() + position);
+
+
 }
 
 
@@ -167,8 +190,32 @@ bool ServerNetwork::broadcast(const char* data, sf::IpAddress exclude_address, u
 }
 
 bool ServerNetwork::send(const char* data, size_t counter, sf::TcpSocket* to) {
-    if (to->send(data, counter,counter) != sf::Socket::Done) {
-        error("Could not send most recent packet on stack (from: localhost, to: " << to->getRemoteAddress());
+
+    auto ct = crypt->encrypt(std::string{data}, SERVER_KEY.c_str() );
+    std::string enc_data{ct.begin(), ct.end()};
+    auto length = enc_data.length();
+    sf::Socket::Status s = to->send(enc_data.c_str(), enc_data.length(),length);
+
+    if (s != sf::Socket::Done) {
+        // if (s == sf::Socket::Error) {
+        //     return;
+        // }
+        error("Could not send most recent packet on stack (from: localhost, to: " << to->getRemoteAddress() << ")");
+        return false;
+    }
+    return true;
+}
+
+
+bool ServerNetwork::send_unencrypted(const char* data, size_t counter, sf::TcpSocket* to) {
+
+    sf::Socket::Status s = to->send(data, counter,counter);
+
+    if (s != sf::Socket::Done) {
+        // if (s == sf::Socket::Error) {
+        //     return;
+        // }
+        error("Could not send most recent packet on stack (from: localhost, to: " << to->getRemoteAddress() << ")");
         return false;
     }
     return true;
@@ -237,7 +284,13 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
                 // key
                 secure_vector<uint8_t> v;
                 try {
-                  v = crypt->RSA_decrypt(received_data);
+                
+                  secure_vector<uint8_t> vec{};
+                  vec.resize(received_bytes);
+                  std::transform(received_data, received_data + received_bytes, vec.begin(), [](char v) {return static_cast<uint8_t>(v);});
+
+
+                  v = crypt->RSA_decrypt(vec);
                 } catch(std::exception e) {
                     std::cout << "ayo " << iterator << std::endl;
                     __logl("CXX exception: " << e.what() << "\n\tat " << "botan.decrypt\nMoving on...");
@@ -287,40 +340,56 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
                     if (config[uname]["password"]) {
                         if (config[uname]["password"].as<std::string>() == passwd) {
                             __logl("success");
+                            if (!nick(uname, client, iterator)) return;
                         } else {
                             disconnectClient(client, iterator, DisconnectReason::DisconnectKick);
                             __logl("Remote " << client->getRemoteAddress() << ":" << client->getRemotePort() << " sent bad authentication request.");
+                            return;
                         }
                     } else {
                         __logl("Server did not find password for this username");\
                         disconnectClient(client, iterator, DisconnectReason::DisconnectKick);
                         __logl("Remote " << client->getRemoteAddress() << ":" << client->getRemotePort() << " sent bad authentication request.");
+                        return;
                     }
                 } else {
                     __logl("Server did not find this username");
                     disconnectClient(client, iterator, DisconnectReason::DisconnectKick);
                     __logl("Remote " << client->getRemoteAddress() << ":" << client->getRemotePort() << " sent bad authentication request.");
+                    return;
                 }
-                __logl("do some day");
+                
                 client_authenticated_array[iterator] = AuthStatus::KeyReceived;
-                __logl("amonge");
+                
                 std::string s{"spb"}; // REQUESTING SEND PUBLIC KEY
                 std::cout << iterator << std::endl;
-                send(s.c_str(),s.length(), client); 
+                send_unencrypted(s.c_str(),s.length(), client); 
                 return; 
             } 
             else if (client_authenticated_array[iterator] == AuthStatus::KeyReceived) {
                 crypt->pushNewClientKey(BigInt(std::string(received_data)));
-                std::cout << "Got publickeyof(" << iterator << ") == " << received_data << std::endl;
+                //std::cout << "Got publickeyof(" << iterator << ") == " << received_data << std::endl;
 
-                std::stringstream str;
-                str << crypt->RSA_encrypt(iterator, SERVER_KEY);
-
-                send(str.str().c_str(), str.str().length() + 1, client);
+                auto a = crypt->RSA_encrypt(iterator, SERVER_KEY);
+                std::string server_key_str{a.begin(), a.end()};
+                std::cout << server_key_str.length() << std::endl;
+                
+                send_unencrypted(server_key_str.c_str(), server_key_str.length(), client);
+                
+                client_authenticated_array[iterator] = AuthStatus::Done;
+                
                 return;
             }
+
+            secure_vector<uint8_t> vec{};
+            vec.resize(received_bytes);
+            std::transform(received_data, received_data + received_bytes, vec.begin(), [](char v) {return static_cast<uint8_t>(v);});
             
-            if (!check(received_data)) {
+            auto x = crypt->decrypt(vec, SERVER_KEY.c_str());
+            std::string sent_data{x["msg"].begin(), x["msg"].end()};
+
+            
+            if (!check(sent_data.data())) {
                 if (clientid_array[iterator] != "\x96") error("Invalid send from " << clientid_array[iterator]);
                 else error("Invalid send from " << client->getRemoteAddress() << ":" << client->getRemotePort());
 
@@ -329,7 +398,7 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
                 return;
             }
 
-            if (received_bytes >= 4096) {
+            if (sent_data.length() >= 4096) {
                 
                 if (clientid_array[iterator] != "\x96") error("Invalid send from " << clientid_array[iterator]); 
                 else error("Invalid send from " << client->getRemoteAddress() << ":" << client->getRemotePort());
@@ -343,20 +412,20 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
 
 
             // Handle receives
-            if ((strncmp("0",received_data,1) == 0)) {
-                    if(!handleSend(received_data,sending_string,client,iterator)) return;
+            if ((strncmp("0",sent_data.c_str(),1) == 0)) {
+                    if(!handleSend(sent_data,sending_string,client,iterator)) return;
             } else
-            if ((strncmp("3",received_data,1) == 0)) {
-                handleNick(received_data,client,iterator);
+            if ((strncmp("3",sent_data.c_str(),1) == 0)) {
+                handleNick(sent_data,client,iterator);
                 
                 return;
                 
             } else
-            if ((strncmp("4",received_data,1) == 0)) {
+            if ((strncmp("4",sent_data.c_str(),1) == 0)) {
                 __logl("[INFO] Denied request.");
             } else
-            if ((strncmp("5",received_data,1) == 0)) {
-                handleCommand(received_data,client,iterator);
+            if ((strncmp("5",sent_data.c_str(),1) == 0)) {
+                handleCommand(sent_data,client,iterator);
                 return;
             }
             else {
@@ -370,8 +439,8 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
             char char_array[256] = {'\0'};
             strcpy(char_array,convertedSS.c_str());
             broadcast(char_array, client->getRemoteAddress(), client->getRemotePort());
-                if (clientid_array[iterator] != "\x96") __logl(clientid_array[iterator] << " sent '" << received_data << "'"); 
-                else __logl(client->getRemoteAddress().toString() << ":" << client->getRemotePort() << " sent '" << received_data << "'"); 
+                if (clientid_array[iterator] != "\x96") __logl(clientid_array[iterator] << " sent '" << sent_data << "'"); 
+                else __logl(client->getRemoteAddress().toString() << ":" << client->getRemotePort() << " sent '" << sent_data << "'"); 
             
             
             updateObjs();
@@ -383,14 +452,13 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
             std::string message = "6\x01You are sending messages too fast. Cool down.";
             send(message.c_str(),message.length() + 1, client);
             // lastQueuer = client;
-            // send_queue.push_back(sending_string.str());        
+            // send_queue.push_back(sending_string.str());          
         }
     }
 }
 
-void ServerNetwork::handleCommand(char* received_data,sf::TcpSocket* client, size_t iterator) {
-    memmove(received_data, received_data+1, strlen (received_data+1) + 1);
-    char* message = received_data;
+void ServerNetwork::handleCommand(std::string  received_data,sf::TcpSocket* client, size_t iterator) {
+    received_data.erase(0, 2);
     // if (strcmp(message,"list") == 0) {
     //     std::stringstream list_all;
     //     list_all << "5\x01\nList of online users: ";
@@ -415,13 +483,13 @@ void ServerNetwork::handleCommand(char* received_data,sf::TcpSocket* client, siz
     //     send(say.str().c_str(),say.str().length() +1, client);
     //     disconnectClient(client,iterator,DisconnectReason::DisconnectLeave);
     // }
-    __logl(clientid_array[iterator] << " issued command: " << message);
-    cmd_executor->iterate(std::string(message), client, iterator);
+    __logl(clientid_array[iterator] << " issued command: " << received_data);
+    cmd_executor->iterate(received_data, client, iterator);
   
 }
-bool ServerNetwork::handleSend(char* received_data,std::stringstream& sending_string,sf::TcpSocket* client, size_t iterator) {
-    memmove(received_data, received_data+1, strlen (received_data+1) + 1);
-    chatSend_str = received_data;
+bool ServerNetwork::handleSend(std::string& received_data,std::stringstream& sending_string,sf::TcpSocket* client, size_t iterator) {
+    received_data.erase(0, 1);
+    chatSend_str = received_data.c_str();
 
     bool invld_res = (chatSend_str.find_first_not_of(" \t\n\v\f\r") == std::string::npos);
 
@@ -436,7 +504,6 @@ bool ServerNetwork::handleSend(char* received_data,std::stringstream& sending_st
 
     }
     else {
-        std::cout << "zhian1";
         disconnectClient(client,iterator,DisconnectReason::DisconnectUnnamed);
         return false;
     }
@@ -444,13 +511,9 @@ bool ServerNetwork::handleSend(char* received_data,std::stringstream& sending_st
     return true;
 }
 
-/// \brief Handles nicks
-bool ServerNetwork::handleNick(char* received_data,sf::TcpSocket* client, size_t iterator) {
-    memmove(received_data, received_data+1, strlen (received_data+1) + 1);
-    // Check whether name already exists
-    for(auto i : clientid_array) {
+bool ServerNetwork::nick(std::string received_data, sf::TcpSocket* client, size_t iterator) {
+     for(auto i : clientid_array) {
         if (received_data == i) {        
-            std::cout << "zhian1";
             disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
             warn("An attempt of connection with an already online alias was blocked.");
             return false;
@@ -470,7 +533,7 @@ bool ServerNetwork::handleNick(char* received_data,sf::TcpSocket* client, size_t
     }
 
     char char_array[256] = {'\0'};
-    strcpy(char_array,received_data);
+    strcpy(char_array,received_data.c_str());
     
     chatSend_str = received_data;
     bool invld_res = (chatSend_str.find_first_not_of(" \t\n\v\f\r") == std::string::npos);
@@ -489,10 +552,17 @@ bool ServerNetwork::handleNick(char* received_data,sf::TcpSocket* client, size_t
     __logl(client->getRemoteAddress().toString() << ":" << std::to_string(client->getRemotePort()) << ": Remote entry is masked to " << received_data );
     clientid_array[iterator] = received_data;
 
-
-    // Normal
     return true;
 }
+
+/// \brief Handles nicks
+bool ServerNetwork::handleNick(std::string received_data,sf::TcpSocket* client, size_t iterator) {
+    received_data.erase(0, 2);
+    std::cout << "nick is: " << received_data << std::endl;
+    // Check whether name already exists
+   
+    return nick(received_data, client, iterator);
+}   
 
 void ServerNetwork::handleRequestedConsole(sf::TcpSocket* sock,size_t iterpos) {
     __log("op " << sock->getRemoteAddress().toString() << ":" << sock->getRemotePort() << " (AKA:" << clientid_array[iterpos] << "): Remote is requesting to become an operator. [Y/N]");
