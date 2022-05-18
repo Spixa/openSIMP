@@ -99,8 +99,8 @@ class ServerNetwork {
     ServerNetwork();
     ServerNetwork(ServerNetwork const&) = delete;
     ServerNetwork& operator=(ServerNetwork const&) = delete;
-
-    std::string SERVER_KEY{"2B7E151628AED2A6ABf71589"};
+    
+    std::string SERVER_KEY{"2B7E151628AED2A6ABF7158809CF4F3C2B7E151628AED2A6ABF7158809CF4F3C"};
 
 public:
     static ServerNetwork* Get();
@@ -121,15 +121,18 @@ public:
     bool broadcast(const char*, sf::IpAddress, unsigned short);
 
     bool send(const char*, size_t counter, sf::TcpSocket*);
+    bool send_unencrypted(const char*, size_t counter, sf::TcpSocket*);
+
     bool check(char*);
     bool isOp(size_t iter);
 
     void updateObjs();
     
-    void handleCommand(char*, sf::TcpSocket*, size_t);
+    bool nick(std::string, sf::TcpSocket* sock, size_t );
+    void handleCommand(std::string, sf::TcpSocket*, size_t);
 
-    bool handleSend(char*,std::stringstream&,sf::TcpSocket*, size_t);
-    bool handleNick(char*,sf::TcpSocket*, size_t);
+    bool handleSend(std::string& ,std::stringstream&,sf::TcpSocket*, size_t);
+    bool handleNick(std::string ,sf::TcpSocket*, size_t);
     void handleRequestedConsole(sf::TcpSocket*, size_t);
     // Core
 
