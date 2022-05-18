@@ -9,7 +9,7 @@
 
 The open-source, secure instant messaging protocol, developed by 3 hobbyists as a way to practice their chosen language, in order:
 - [Spixa](https://github.com/Spixa), working on c++ components (server, debug client & indev TUI client)
-- [phnixir (a.k.a phoenix_ir_)](https://github.com/phnixir), actively working on a minimalistic Rust gui client and maintaining a debugging utility also written in rust.
+- [vivyir (a.k.a vivy_ir_)](https://github.com/vivyir), actively working on a minimalistic Rust gui client and maintaining a debugging utility also written in rust.
 - [KasraIDK](https://github.com/KasraIDK), planning to create an android client with Java.
 
 openSIMP is an indev protocol built from the ground up with openness and security in mind, openness as in being able to implement your own servers and make your own clients with ease, after stabilizing the main server implementation (c++), a specification will be released as to what packets a server should be able to parse and send and the same thing for clients as well, encryption will be built in on both sides and is enforced.
