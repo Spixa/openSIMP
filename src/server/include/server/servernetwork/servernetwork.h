@@ -10,26 +10,32 @@
 
 #endif
 
-// stdafx
+// std
 #include <iostream>
 #include <thread>
 #include <vector>
 #include <chrono>
 #include <string>
-#include <SFML/Network.hpp>
 #include <memory.h>
 #include <cstring>
 #include <map>
 #include <unordered_map>
 
+
+// ext
+#include <SFML/Network.hpp>
+#include <yaml-cpp/yaml.h>
+
 // from this project
 #include <server/commands/executor.h>
 #include <server/commands/command.h>
+#include <server/cryptography/cryptography.h>
 
-#define MAX_RAW_DATA 256 //Max bytes supported on Raw Data mode
 
-#define logl(x) std::cout << "[INFO] " << x << std::endl
-#define log(x) std::cout << "[INFO] " << x
+#define MAX_RAW_DATA 4096 //Max bytes supported on Raw Data mode
+
+#define __logl(x) std::cout << "[INFO] " << x << std::endl
+#define __log(x) std::cout << x
 #define warn(x) std::cout << "[WARN] " << x << std::endl
 #define error(x) std::cout << "[ERROR] " << x << std::endl
 #define CommandLambda [&](sf::TcpSocket* sock,size_t iterator, std::string args[])
@@ -43,7 +49,12 @@ enum class DisconnectReason {
     DisconnectUnnamed = 2,
 
 };
-
+enum AuthStatus {
+        KeyReceived = 1,
+        Done = 2,
+        Failed = 3,
+        Undone = 4,
+};
 enum class MessageType {
     ChatMessageType = 0,
     JoinMessageType = 1,
@@ -54,12 +65,21 @@ enum class MessageType {
     DirectMessage = 6,
 };
 
+struct UserData {
+    std::string username;
+    std::string password;
+};
+
 class ServerNetwork {
     sf::TcpListener listener;
     std::vector<sf::TcpSocket*> client_array;
     std::vector<std::string> clientid_array;
     std::vector<bool> client_op_array;
     std::vector<sf::Clock*> client_message_interval;
+    std::vector<AuthStatus> client_authenticated_array;
+
+    std::vector<UserData> registered_users;
+
     unsigned short listen_port;
 
     std::vector<ServerObject*> objs;
@@ -72,10 +92,15 @@ class ServerNetwork {
     static ServerNetwork* m_instance;
 
     Executor* cmd_executor;
+    Cryptography* crypt;
+
+    void openUserdata();
 
     ServerNetwork();
-    ServerNetwork(ServerNetwork const&){}
-    ServerNetwork& operator=(ServerNetwork const&){}
+    ServerNetwork(ServerNetwork const&) = delete;
+    ServerNetwork& operator=(ServerNetwork const&) = delete;
+    
+    std::string SERVER_KEY{"2B7E151628AED2A6ABF7158809CF4F3C2B7E151628AED2A6ABF7158809CF4F3C"};
 
 public:
     static ServerNetwork* Get();
@@ -96,15 +121,18 @@ public:
     bool broadcast(const char*, sf::IpAddress, unsigned short);
 
     bool send(const char*, size_t counter, sf::TcpSocket*);
+    bool send_unencrypted(const char*, size_t counter, sf::TcpSocket*);
+
     bool check(char*);
     bool isOp(size_t iter);
 
     void updateObjs();
     
-    void handleCommand(char*, sf::TcpSocket*, size_t);
+    bool nick(std::string, sf::TcpSocket* sock, size_t );
+    void handleCommand(std::string, sf::TcpSocket*, size_t);
 
-    bool handleSend(char*,std::stringstream&,sf::TcpSocket*, size_t);
-    bool handleNick(char*,sf::TcpSocket*, size_t);
+    bool handleSend(std::string& ,std::stringstream&,sf::TcpSocket*, size_t);
+    bool handleNick(std::string ,sf::TcpSocket*, size_t);
     void handleRequestedConsole(sf::TcpSocket*, size_t);
     // Core
 

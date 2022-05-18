@@ -7,7 +7,7 @@ del susclient.exe
 echo =======================
 echo    Compiling server
 echo =======================
-g++ -I./server/include/ server/src/commands/command.cpp server/src/commands/executor.cpp server/src/commands/lexer.cpp server/src/servernetwork/servernetwork.cpp server/src/server.cpp -o server -lpthread -lsfml-system -lsfml-network -LC:\SFML\lib -IC:\SFML\include -W -Wall -std=c++11
+g++ -I./server/include/ server/src/commands/command.cpp server/src/commands/executor.cpp server/src/commands/lexer.cpp server/src/cryptography/cryptography.cpp server/src/servernetwork/servernetwork.cpp server/src/server.cpp -o server -lpthread -lsfml-system -lsfml-network -lbotan-3 -I./server/deps/include -L./server/deps/lib -LC:\SFML\lib -IC:\SFML\include -std=c++17
 echo =======================
 echo    Compiling client
 echo =======================
