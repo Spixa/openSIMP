@@ -294,8 +294,8 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
 
                   v = crypt->RSA_decrypt(vec);
                 } catch(std::exception e) {
-                    std::cout << "ayo " << iterator << std::endl;
-                    __logl("CXX exception: " << e.what() << "\n\tat " << "botan.decrypt\nMoving on...");
+                    __logl("exception: " << e.what() << std::endl);
+                    disconnectClient(client, iterator, DisconnectReason::DisconnectKick);
                     return;
                 }
 
@@ -335,7 +335,11 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
                 }       
 
                 std::cout << "Infomration of newly joined user: ";
-                std::cout << "\n\tUsername: " << uname << "\n\tPassword: " << passwd << '\n'; 
+                std::cout << "\n\tUsername: " << uname << "\n\tPassword: " << passwd << '\n';
+                if (uname == "" || passwd == "") {
+                    disconnectClient(client, iterator, DisconnectReason::DisconnectKick);
+                    return;
+                }
 
                 YAML::Node config = YAML::LoadFile("userdata.yml");
                 if (config[uname]) {
@@ -358,9 +362,11 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
                     // __logl("Server did not find this username");
                     // disconnectClient(client, iterator, DisconnectReason::DisconnectKick);
                     // __logl("Remote " << client->getRemoteAddress() << ":" << client->getRemotePort() << " sent bad authentication request.");
-                    registerUser(uname, passwd);
                     if (!nick(uname, client, iterator)) return;
-                    __logl(uname + "is a new user");
+                    registerUser(uname, passwd);
+                    
+                    __logl(uname + " is a new user");
+                    broadcastString("Everybody welcome the new user " + uname, client->getRemoteAddress(), client->getRemotePort());
                    
                 }
                 
