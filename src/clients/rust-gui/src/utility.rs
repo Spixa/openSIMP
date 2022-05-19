@@ -40,6 +40,23 @@ pub fn get_username() -> String {
     uname.unwrap()
 }
 
+pub fn get_password() -> String {
+    let passwd;
+    loop {
+        passwd = dialog::input_default("Please type in a password", "");
+        match passwd {
+            Some(ref pass) => {
+                if !pass.is_empty() {
+                    break;
+                }
+                std::process::exit(0);
+            }
+            None => std::process::exit(0),
+        }
+    }
+    passwd.unwrap()
+}
+
 pub fn get_address() -> (IpAddr, u16) {
     let inner_url;
     loop {
