@@ -471,7 +471,7 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
         } else {
             std::string message = "6\x01You are sending messages too fast. Cool down.";
             send(message.c_str(),message.length() + 1, client);
-            client_message_interval[iterator]
+            
             // lastQueuer = client;
             // send_queue.push_back(sending_string.str());          
         }
