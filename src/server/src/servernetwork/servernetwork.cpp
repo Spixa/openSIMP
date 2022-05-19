@@ -334,8 +334,6 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
                     }
                 }       
 
-                std::cout << "Infomration of newly joined user: ";
-                std::cout << "\n\tUsername: " << uname << "\n\tPassword: " << passwd << '\n';
                 if (uname == "" || passwd == "") {
                     disconnectClient(client, iterator, DisconnectReason::DisconnectKick);
                     return;
@@ -345,7 +343,7 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
                 if (config[uname]) {
                     if (config[uname]["password"]) {
                         if (config[uname]["password"].as<std::string>() == passwd) {
-                            __logl("success");
+                            __logl(uname + "connected");
                             if (!nick(uname, client, iterator)) return;
                         } else {
                             disconnectClient(client, iterator, DisconnectReason::DisconnectKick);
@@ -367,12 +365,13 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
                     
                     __logl(uname + " is a new user");
                     broadcastString("Everybody welcome the new user " + uname, client->getRemoteAddress(), client->getRemotePort());
+
                    
                 }
                 
                 
                 client_authenticated_array[iterator] = AuthStatus::KeyReceived;
-                
+                        
                 std::string s{"spb"}; // REQUESTING SEND PUBLIC KEY
                 std::cout << iterator << std::endl;
                 send_unencrypted(s.c_str(),s.length(), client); 
@@ -398,7 +397,7 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
                 }
               
                 client_authenticated_array[iterator] = AuthStatus::Done;
-                
+                sendString("Welcome to this openSIMP server " + clientid_array[iterator] + "!", client);
                 return;
             }
 
@@ -517,6 +516,7 @@ bool ServerNetwork::handleSend(std::string& received_data,std::stringstream& sen
     if (invld_res) {
         std::string message = "6\x01Stop sending empty shit.";
         send(message.c_str(),message.length() + 1, client);
+        disconnectClient(client, iterator, DisconnectReason::DisconnectKick);
         return false;
     }
 
@@ -540,9 +540,14 @@ bool ServerNetwork::nick(std::string received_data, sf::TcpSocket* client, size_
             return false;
         }
     }
-    if (received_data[2] == '\0') {
+    if (received_data.length() < 3) {
         disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
         warn("Previous remote's alias was too short. (kicked)");
+        return false;
+    }
+    if (received_data.length() > 16) {
+        disconnectClient(client,iterator,DisconnectReason::DisconnectKick);
+        warn("Previous remote's alias was too long. (kicked)");
         return false;
     }
 

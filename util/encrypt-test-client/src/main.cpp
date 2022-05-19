@@ -77,15 +77,10 @@ void handshake(const std::string& UNAME, const std::string& PASSWD) {
                 vec.resize(bytes);
                 std::transform(data, data + bytes, vec.begin(), [](char v) {return static_cast<uint8_t>(v);});
                 std::string server_key_str_enc{vec.begin(), vec.end()};
-                std::cout << server_key_str_enc.length() << std::endl;
 
                 status = HandshakeStatus::ReceivedAESKey;
                 auto v= crypt->RSA_decrypt(vec);
-                std::cout << "AES key: ";
-                for (auto x : v) {
-                    std::cout << x;
-                    aes_key += x;
-                }
+                aes_key = std::string{v.begin(), v.end()};
             
                 std::cout << std::endl;
                 hasHandshook = true;

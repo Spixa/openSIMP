@@ -30,22 +30,32 @@ void ClientNetwork::receive(sf::TcpSocket* socket) {
             auto g = crypt->decrypt(vec, aes_key.c_str());
             std::string pt{g["msg"].begin(), g["msg"].end()};
 
+            // size_t counter{};
+            // for (auto x : pt) {
+            //     if (x == '\x01') {
+            //         log(" -- ");
+            //         counter++;
+            //     } else {
+            //         log(x);
+            //     }
+            // }
+            // logl('\n' << counter << " receivees in total.");
+            std::string args[5];
+            Utils::lexer(pt, args, '\x01');
 
-            
-            logl(pt.length() << " bytes were received");
-            log("\tReceived: ");
-
-            size_t counter{};
-            for (auto x : pt) {
-                if (x == '\x01') {
-                    log(" -- ");
-                    counter++;
-                } else {
-                    log(x);
-                }
+            if (args[0] == "0") {
+                logl("<" << args[2] << "> " << args[1]);
+            } else
+            if (args[0] == "1" || args[0] == "2") {
+                logl(args[1]);
+            }  else
+            if (args[0] == "5") {
+                logl("(Command) " + args[1]);
+            } else
+            if (args[0] == "6") {
+                logl("[Direct] " + args[1]);
             }
 
-            logl('\n' << counter << " receivees in total.");
         } else if (status == sf::Socket::Disconnected) {
             log("You were disconnected from the server.");
             ::exit(0);
@@ -65,11 +75,11 @@ void ClientNetwork::handshake(const std::string& UNAME, const std::string& PASSW
                 std::stringstream str;
                 std::stringstream credits;
                 credits << UNAME << '\x01' << PASSWD;
+                    auto a = crypt->RSA_encrypt(0, credits.str());
+                    for (auto x : a) {
+                        str << x;
+                    }
 
-                auto a = crypt->RSA_encrypt(0, credits.str());
-                for (auto x : a) {
-                    str << x;
-                }
 
                 send_raw(str.str());
                 status = HandshakeStatus::SentCredientials;
@@ -85,15 +95,16 @@ void ClientNetwork::handshake(const std::string& UNAME, const std::string& PASSW
                 vec.resize(bytes);
                 std::transform(data, data + bytes, vec.begin(), [](char v) {return static_cast<uint8_t>(v);});
                 std::string server_key_str_enc{vec.begin(), vec.end()};
-                std::cout << server_key_str_enc.length() << std::endl;
 
                 status = HandshakeStatus::ReceivedAESKey;
-                auto v= crypt->RSA_decrypt(vec);
-                std::cout << "AES key: ";
-                for (auto x : v) {
-                    std::cout << x;
-                    aes_key += x;
-                }
+
+    
+                    auto v= crypt->RSA_decrypt(vec);
+                    aes_key = std::string{v.begin(), v.end()};
+                
+
+
+                
             
                 std::cout << std::endl;
                 hasHandshook = true;
@@ -122,9 +133,8 @@ void ClientNetwork::send_raw(std::string const& sent) {
 }
 
 void ClientNetwork::run() {
-    std::cout << "Generating keypair...\n";
     crypt = new Cryptography();
-    std::cout << "Generated keypair\n";
+    std::cout << "You may now authenticate\n";
 
     log("Username: ");
     std::string uname, password;
