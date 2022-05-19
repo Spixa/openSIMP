@@ -84,7 +84,7 @@ const std::vector<uint8_t> Cryptography::RSA_encrypt(size_t iterator, const std:
 
 secure_vector<uint8_t> Cryptography::RSA_decrypt(secure_vector<uint8_t> given) {
       // Decrypt deviice
+      
       PK_Decryptor_EME dec_dev(*kp, rng, "PKCS1v15");
-
       return dec_dev.decrypt(given);
 }
