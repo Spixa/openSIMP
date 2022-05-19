@@ -151,14 +151,18 @@ void ClientNetwork::run() {
         if (isConnected) {
             std::string user_input;
             std::getline(std::cin, user_input);
+            if (user_input.empty()) {
+                user_input = "AA";
+            }
 
             char* tosend = const_cast<char*>(user_input.c_str());
+
 
             if (tosend[0] == '/') {
                 memmove(tosend, tosend+1, strlen (tosend+1) + 1);
                 user_input = "5" + user_input;
             } else user_input = "0" + user_input;
-
+            
             send(user_input);
             
         }

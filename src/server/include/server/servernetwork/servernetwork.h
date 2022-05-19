@@ -47,7 +47,7 @@ enum class DisconnectReason {
     DisconnectLeave = 0,
     DisconnectKick = 1,
     DisconnectUnnamed = 2,
-
+    DisconnectSpam = 3,
 };
 enum AuthStatus {
         KeyReceived = 1,

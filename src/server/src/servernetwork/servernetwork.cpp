@@ -9,7 +9,7 @@
 ServerNetwork* ServerNetwork::m_instance = nullptr;
 
 void ServerNetwork::sendString(std::string str, sf::TcpSocket* client) {
-    str = "5\x01" + str;
+    str = "6\x01" + str;
     send(str.c_str(),str.length()+1, client);
 }
 
@@ -149,6 +149,10 @@ void ServerNetwork::disconnectClient(sf::TcpSocket* socket_pointer, size_t posit
             leaveMessage += "being unnamed.";
             warn("Previous client \"" << socket_pointer->getRemoteAddress() << ":" << std::to_string(socket_pointer->getRemotePort()) << "\" was kicked due to being unnamed.");
         break;
+        case DisconnectReason::DisconnectSpam:
+            leaveMessage += "spamming too much.";
+            warn("Previous client \"" << socket_pointer->getRemoteAddress() << ":" << std::to_string(socket_pointer->getRemotePort()) << "\" was kicked due spamming.");
+        break;
         default:
             leaveMessage += "an unknown odd reason.";
         break;
@@ -275,12 +279,20 @@ bool ServerNetwork::isOp(size_t iter) {
 }
  
 void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
+    
     char received_data[MAX_RAW_DATA]; size_t received_bytes;
         memset(received_data, 0, sizeof(received_data));
-        if (client->receive(received_data, sizeof(received_data), received_bytes) == sf::Socket::Disconnected) {
+    if (client->receive(received_data, sizeof(received_data), received_bytes) == sf::Socket::Disconnected) {
             disconnectClient(client, iterator,DisconnectReason::DisconnectLeave);
     }
     else if (received_bytes > 0) {
+            if (client_authenticated_array[iterator] == AuthStatus::Done) {
+                if (client_message_interval[iterator]->restart().asMilliseconds() <= 20) {
+                    disconnectClient(client, iterator,DisconnectReason::DisconnectSpam);
+                    return;
+                }
+            }
+            
             // Unathenticated __logic
             if (client_authenticated_array[iterator] == AuthStatus::Undone) {
                 // key
@@ -397,7 +409,6 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
                 }
               
                 client_authenticated_array[iterator] = AuthStatus::Done;
-                sendString("Welcome to this openSIMP server " + clientid_array[iterator] + "!", client);
                 return;
             }
 
@@ -405,7 +416,14 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
             vec.resize(received_bytes);
             std::transform(received_data, received_data + received_bytes, vec.begin(), [](char v) {return static_cast<uint8_t>(v);});
             
-            auto x = crypt->decrypt(vec, SERVER_KEY.c_str());
+            std::unordered_map<std::string,secure_vector<uint8_t>> x;
+
+            try {
+                x = crypt->decrypt(vec, SERVER_KEY.c_str());
+            } catch(...) {
+                sendString("Your previous message was not sent", client);
+                return;
+            }
             std::string sent_data{x["msg"].begin(), x["msg"].end()};
 
             
@@ -453,28 +471,20 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
                 return;
             }
         
-        if (client_message_interval[iterator]->getElapsedTime().asMilliseconds() >= 500) {
+        
 
-            std::string convertedSS = sending_string.str();
-            char char_array[256] = {'\0'};
-            strcpy(char_array,convertedSS.c_str());
-            broadcast(char_array, client->getRemoteAddress(), client->getRemotePort());
-                if (clientid_array[iterator] != "\x96") __logl(clientid_array[iterator] << " sent '" << sent_data << "'"); 
-                else __logl(client->getRemoteAddress().toString() << ":" << client->getRemotePort() << " sent '" << sent_data << "'"); 
-            
-            
-            updateObjs();
-            chatSend_str = "";
+        std::string convertedSS = sending_string.str();
+        char char_array[256] = {'\0'};
+        strcpy(char_array,convertedSS.c_str());
+        broadcast(char_array, client->getRemoteAddress(), client->getRemotePort());
+            if (clientid_array[iterator] != "\x96") __logl(clientid_array[iterator] << " sent '" << sent_data << "'"); 
+            else __logl(client->getRemoteAddress().toString() << ":" << client->getRemotePort() << " sent '" << sent_data << "'"); 
+        
+        
+        updateObjs();
+        chatSend_str = "";
 
-            client_message_interval[iterator]->restart();
-
-        } else {
-            std::string message = "6\x01You are sending messages too fast. Cool down.";
-            send(message.c_str(),message.length() + 1, client);
-            
-            // lastQueuer = client;
-            // send_queue.push_back(sending_string.str());          
-        }
+        client_message_interval[iterator]->restart();
     }
 }
 
