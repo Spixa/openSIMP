@@ -36,22 +36,24 @@ use fltk::{
 use fltk_theme::{ThemeType, WidgetTheme};
 use human_panic::setup_panic;
 use std::io::prelude::*;
-use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
+use std::{net::SocketAddr, sync::mpsc::channel};
 
 #[cfg(feature = "notify-rust")]
 use notify_rust::Notification;
 
+use rsa::PublicKeyParts;
+
 pub mod network;
 pub mod utility;
-use crate::network::Packet;
-use crate::utility::{car_cdr, get_address, get_username, Message};
+use crate::network::{aes_encrypt, Packet};
+use crate::utility::{car_cdr, get_address, get_password, get_username, Message};
 
 fn main() {
     setup_panic!(human_panic::Metadata {
         name: env!("CARGO_PKG_NAME").into(),
         version: env!("CARGO_PKG_VERSION").into(),
-        authors: "phnixir (phoenix_ir_) <ayitsmephoenix@airmail.cc>".into(),
+        authors: "vivyir (vivy_ir_) <ayitsmephoenix@airmail.cc>".into(),
         homepage: "https://github.com/Spixa/openSIMP".into(),
     });
 
@@ -192,6 +194,12 @@ fn main() {
     wind.show();
     /* end gui intialization */
 
+    let (tx_rsakeypair, rx_rsakeypair) = channel();
+    network::make_rsa_keypair(tx_rsakeypair);
+
+    let aes_key: Arc<Mutex<Vec<u8>>> = Arc::new(Mutex::new(vec![0]));
+    let rx_aes_key = aes_key.clone();
+
     // NOTE: function from src/utility.rs
     let (ip_address, port) = get_address();
     let raw_tcpstream = match network::connect(SocketAddr::new(ip_address, port)) {
@@ -213,10 +221,13 @@ fn main() {
     // you can use a tcpstream in multiple threads without needing an arcmutex...
     let mut writer_tcpstream = raw_tcpstream.try_clone().unwrap();
     let mut reader_tcpstream = raw_tcpstream.try_clone().unwrap();
+    let mut reader_tcpstream2 = raw_tcpstream.try_clone().unwrap();
 
     // NOTE: function from src/utility.rs
     let uname = get_username();
     wind.set_label(format!("Rust openSIMP client - {}", uname).as_str());
+
+    let passwd = get_password();
 
     // autofocus input box on launch
     message.take_focus().unwrap();
@@ -229,111 +240,125 @@ fn main() {
 
     s.send(Message::Login);
 
-    std::thread::spawn(move || loop {
-        let mut buf: Vec<u8> = vec![0; 4096];
-        let bytes_read = reader_tcpstream.read(&mut buf).unwrap();
-        buf.truncate(bytes_read);
-        if bytes_read == 0 {
-            let dialog_text = concat!(
-                "Connection error occured!\n",
-                "Press close to shutdown gracefully or ignore to continue\n",
-                "(It's recommended to close and relaunch)\n",
-                "\n",
-                "Note: If this dialog keeps coming up it (in most cases) means\n",
-                "either your internet connection cut off, server went down, you\n",
-                "executed /suicide or you were kicked, and if you did execute\n",
-                "/suicide, why? theres the \".leave\" client command and it\n",
-                "doesn't cause this error, rather, it leaves gracefully\n"
-            );
-            match dialog::choice_default(dialog_text, "Ignore", "Close", "") {
-                0 => continue,
-                1 => std::process::exit(0),
-                _ => panic!("THIS SHOULD BE UNREACHABLE!!!! crash and burn right this second..."),
+    let (s2, r2) = channel();
+
+    std::thread::spawn(move || {
+        loop {
+            if let Ok(()) = r2.try_recv() {
+                break;
             }
         }
+        loop {
+            let mut buf: Vec<u8> = vec![0; 4096];
+            if network::read_packet(&mut buf, &mut reader_tcpstream).is_none() {
+                let dialog_text = concat!(
+                    "Connection error occured!\n",
+                    "Press close to shutdown gracefully or ignore to continue\n",
+                    "(It's recommended to close and relaunch)\n",
+                    "\n",
+                    "Note: If this dialog keeps coming up it (in most cases) means\n",
+                    "either your internet connection cut off, server went down, you\n",
+                    "executed /suicide or you were kicked, and if you did execute\n",
+                    "/suicide, why? theres the \".leave\" client command and it\n",
+                    "doesn't cause this error, rather, it leaves gracefully\n"
+                );
+                match dialog::choice_default(dialog_text, "Ignore", "Close", "") {
+                    0 => continue,
+                    1 => std::process::exit(0),
+                    _ => {
+                        panic!("THIS SHOULD BE UNREACHABLE!!!! crash and burn right this second...")
+                    }
+                }
+            }
 
-        let packet = network::parse_packet(&buf);
-        match packet {
-            Packet::MessagePacket(username, message) => {
-                let text = format!("<{}>: '{}'\n", &username, &message);
-                {
-                    let mut textbox = textbox_ref.lock().unwrap();
-                    let txbxlen = textbox.buffer().unwrap().length();
-                    textbox.set_insert_position(txbxlen); // put cursor at the end before insertion
-                    textbox.insert(&text);
-                    s.send(Message::NewestIfToggled);
-                }
+            {
+                let aes_key = rx_aes_key.clone();
+                let aes_key = aes_key.lock().unwrap();
+                buf = network::aes_decrypt(&aes_key, &buf);
+            }
+            let packet = network::parse_packet(&buf);
+            match packet {
+                Packet::MessagePacket(username, message) => {
+                    let text = format!("<{}>: '{}'\n", &username, &message);
+                    {
+                        let mut textbox = textbox_ref.lock().unwrap();
+                        let txbxlen = textbox.buffer().unwrap().length();
+                        textbox.set_insert_position(txbxlen); // put cursor at the end before insertion
+                        textbox.insert(&text);
+                        s.send(Message::NewestIfToggled);
+                    }
 
-                #[cfg(feature = "notify-rust")]
-                {
-                    Notification::new()
-                        .summary(format!("Message from {}", &username).as_str())
-                        .body(format!("{}: {}", &username, &message).as_str())
-                        .show()
-                        .unwrap();
+                    #[cfg(feature = "notify-rust")]
+                    {
+                        Notification::new()
+                            .summary(format!("Message from {}", &username).as_str())
+                            .body(format!("{}: {}", &username, &message).as_str())
+                            .show()
+                            .unwrap();
+                    }
                 }
-            }
-            Packet::JoinPacket(notif) => {
-                let text = format!("{}\n", &notif);
-                {
-                    let mut textbox = textbox_ref.lock().unwrap();
-                    let txbxlen = textbox.buffer().unwrap().length();
-                    textbox.set_insert_position(txbxlen);
-                    textbox.insert(&text);
-                    s.send(Message::NewestIfToggled);
-                }
+                Packet::JoinPacket(notif) => {
+                    let text = format!("{}\n", &notif);
+                    {
+                        let mut textbox = textbox_ref.lock().unwrap();
+                        let txbxlen = textbox.buffer().unwrap().length();
+                        textbox.set_insert_position(txbxlen);
+                        textbox.insert(&text);
+                        s.send(Message::NewestIfToggled);
+                    }
 
-                #[cfg(feature = "notify-rust")]
-                {
-                    Notification::new()
-                        .summary("Someone joined!")
-                        .body(&notif)
-                        .show()
-                        .unwrap();
+                    #[cfg(feature = "notify-rust")]
+                    {
+                        Notification::new()
+                            .summary("Someone joined!")
+                            .body(&notif)
+                            .show()
+                            .unwrap();
+                    }
                 }
-            }
-            Packet::DisconnectPacket(notif) => {
-                let text = format!("{}\n", notif);
-                {
-                    let mut textbox = textbox_ref.lock().unwrap();
-                    let txbxlen = textbox.buffer().unwrap().length();
-                    textbox.set_insert_position(txbxlen);
-                    textbox.insert(&text);
-                    s.send(Message::NewestIfToggled);
-                }
+                Packet::DisconnectPacket(notif) => {
+                    let text = format!("{}\n", notif);
+                    {
+                        let mut textbox = textbox_ref.lock().unwrap();
+                        let txbxlen = textbox.buffer().unwrap().length();
+                        textbox.set_insert_position(txbxlen);
+                        textbox.insert(&text);
+                        s.send(Message::NewestIfToggled);
+                    }
 
-                #[cfg(feature = "notify-rust")]
-                {
-                    Notification::new()
-                        .summary("Someone left!")
-                        .body(&notif)
-                        .show()
-                        .unwrap();
+                    #[cfg(feature = "notify-rust")]
+                    {
+                        Notification::new()
+                            .summary("Someone left!")
+                            .body(&notif)
+                            .show()
+                            .unwrap();
+                    }
                 }
-            }
-            Packet::CommandReplyPacket(reply) => {
-                let text = format!("[Server]: {}", reply.trim());
-                {
-                    let mut textbox = textbox_ref.lock().unwrap();
-                    let txbxlen = textbox.buffer().unwrap().length();
-                    textbox.set_insert_position(txbxlen);
-                    textbox.insert(&text);
-                    textbox.insert("\n");
-                    s.send(Message::NewestIfToggled);
+                Packet::CommandReplyPacket(reply) => {
+                    let text = format!("[Server]: {}", reply.trim());
+                    {
+                        let mut textbox = textbox_ref.lock().unwrap();
+                        let txbxlen = textbox.buffer().unwrap().length();
+                        textbox.set_insert_position(txbxlen);
+                        textbox.insert(&text);
+                        textbox.insert("\n");
+                        s.send(Message::NewestIfToggled);
+                    }
                 }
-            }
-            Packet::ServerDmPacket(dm) => {
-                let text = format!("[Server (DM)]: {}", dm.trim());
-                {
-                    let mut textbox = textbox_ref.lock().unwrap();
-                    let txbxlen = textbox.buffer().unwrap().length();
-                    textbox.set_insert_position(txbxlen);
-                    textbox.insert(&text);
-                    textbox.insert("\n");
-                    s.send(Message::NewestIfToggled);
+                Packet::ServerDmPacket(dm) => {
+                    let text = format!("[Server (DM)]: {}", dm.trim());
+                    {
+                        let mut textbox = textbox_ref.lock().unwrap();
+                        let txbxlen = textbox.buffer().unwrap().length();
+                        textbox.set_insert_position(txbxlen);
+                        textbox.insert(&text);
+                        textbox.insert("\n");
+                        s.send(Message::NewestIfToggled);
+                    }
                 }
-            }
-        };
+            };
+        }
     });
 
     /* begin clientside flags */
@@ -352,9 +377,77 @@ fn main() {
                 widget_theme.apply();
             }
             Some(Message::Login) => {
+                let mut buf: Vec<u8> = vec![0; 4096];
+                if network::read_packet(&mut buf, &mut reader_tcpstream2).is_none() {
+                    let dialog_text = concat!(
+                        "Connection error occured!\n",
+                        "Press close to shutdown gracefully or ignore to continue\n",
+                        "(It's recommended to close and relaunch)\n",
+                        "\n",
+                        "Note: If this dialog keeps coming up it (in most cases) means\n",
+                        "either your internet connection cut off, server went down, you\n",
+                        "executed /suicide or you were kicked, and if you did execute\n",
+                        "/suicide, why? theres the \".leave\" client command and it\n",
+                        "doesn't cause this error, rather, it leaves gracefully\n"
+                    );
+                    match dialog::choice_default(dialog_text, "Ignore", "Close", "") {
+                        0 => continue,
+                        1 => std::process::exit(0),
+                        _ => panic!(
+                            "THIS SHOULD BE UNREACHABLE!!!! crash and burn right this second..."
+                        ),
+                    }
+                }
+
+                let serverpubk =
+                    network::make_rsa_pubkey(std::str::from_utf8(&buf).unwrap(), "65537");
+
+                let encrypted_credentials = network::encrypt_with_rsa(
+                    serverpubk,
+                    &[uname.as_bytes(), &[0x01u8], passwd.as_bytes()].concat(),
+                );
+
+                writer_tcpstream.write_all(&encrypted_credentials).unwrap();
+
+                // listen for "spb" to send the client public key
+                if network::read_packet(&mut buf, &mut reader_tcpstream2).is_none() {
+                    panic!("sapien fucking damn it"); //NOTE: panic!
+                }
+
+                // gather the rsa keypair from the generator thread
+                let priv_key;
+                let pub_key;
+                loop {
+                    if let Ok((pr, pu)) = rx_rsakeypair.try_recv() {
+                        priv_key = pr;
+                        pub_key = pu;
+                        break;
+                    }
+                }
+
+                // because the server is written in c++ and uses cstrings we need to nullterminate
                 writer_tcpstream
-                    .write_all(&format!("3{}", uname).into_bytes())
+                    .write_all(&format!("{}\u{0}", pub_key.n()).into_bytes())
                     .unwrap();
+
+                // maka a new buffer so it can fit the aes key
+                let mut buf: Vec<u8> = vec![0; 4096];
+
+                // get aes
+                if network::read_packet(&mut buf, &mut reader_tcpstream2).is_none() {
+                    panic!("aeress fucking damnit"); //NOTE: panic!
+                }
+
+                let key = network::decrypt_with_rsa(priv_key, &buf[..]);
+
+                {
+                    let aes_key = aes_key.clone();
+                    let mut aes_key = aes_key.lock().unwrap();
+                    *aes_key = network::dehex(key);
+                }
+
+                // give the receiver thread permission to begin receiving
+                s2.send(()).unwrap();
             }
             Some(Message::SendMessage) => {
                 {
@@ -383,10 +476,14 @@ fn main() {
                         let textbox = textbox.lock().unwrap();
                         textbox.insert("[Info]: Requested operator\n");
                     }
-                    writer_tcpstream
-                        //.write_all(&format!("4").into_bytes())
-                        .write_all(&"4".to_string().into_bytes())
-                        .unwrap();
+                    {
+                        let aes_key = aes_key.clone();
+                        let aes_key = aes_key.lock().unwrap();
+                        writer_tcpstream
+                            //.write_all(&format!("4").into_bytes())
+                            .write_all(&aes_encrypt(&aes_key, &"4".to_string().into_bytes()))
+                            .unwrap();
+                    }
                     message.set_value("");
                 } else if message.value().trim() == ".uwuify" {
                     if !uwuify {
@@ -417,9 +514,16 @@ fn main() {
                         textbox
                             .insert(format!("[Info]: Sending command \"{}\" \n", command).as_str());
                     }
-                    writer_tcpstream
-                        .write_all(&format!("5{}", command).into_bytes())
-                        .unwrap();
+                    {
+                        let aes_key = aes_key.clone();
+                        let aes_key = aes_key.lock().unwrap();
+                        writer_tcpstream
+                            .write_all(&aes_encrypt(
+                                &aes_key,
+                                &format!("5{}", command).into_bytes(),
+                            ))
+                            .unwrap();
+                    }
                     message.set_value("");
                 } else {
                     let mut string = message.value().replace('\n', "");
@@ -431,8 +535,10 @@ fn main() {
                         textbox.insert(format!("<{}>: '{}'\n", uname, string).as_str());
                     }
                     {
+                        let aes_key = aes_key.clone();
+                        let aes_key = aes_key.lock().unwrap();
                         writer_tcpstream
-                            .write_all(&format!("0{}", string).into_bytes())
+                            .write_all(&aes_encrypt(&aes_key, &format!("0{}", string).into_bytes()))
                             .unwrap();
                     }
                     message.set_value("");
