@@ -38,7 +38,7 @@
 #define __log(x) std::cout << x
 #define warn(x) std::cout << "[WARN] " << x << std::endl
 #define error(x) std::cout << "[ERROR] " << x << std::endl
-#define CommandLambda [&](sf::TcpSocket* sock,size_t iterator, std::string args[])
+#define CommandLambda [&](sf::TcpSocket* sock,size_t iterator, std::vector<std::string> args)
 class ServerObject;
 class ChatHandler;
 
@@ -63,6 +63,7 @@ enum class MessageType {
     RequestConsole = 4,
     CommandResponse = 5,
     DirectMessage = 6,
+    SendListMessage = 7,
 };
 
 struct UserData {
@@ -115,11 +116,13 @@ public:
     void registerUser(std::string const& username, std::string const& password);
     
     void sendString(std::string, sf::TcpSocket*);
+    void sendString(std::string, size_t iterator);
     void broadcastString(std::string, sf::IpAddress, unsigned short);
     // Receive & send
     void receive(sf::TcpSocket*, size_t);
     bool broadcast(const char*, sf::IpAddress, unsigned short);
 
+    void broadcastList();
     bool send(const char*, size_t counter, sf::TcpSocket*);
     bool send_unencrypted(const char*, size_t counter, sf::TcpSocket*);
 

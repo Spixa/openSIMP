@@ -20,19 +20,19 @@ namespace simp {
 
 class ExecutableCommand {
 public:
-    ExecutableCommand(std::string str,std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator, std::string[])> f);
+    ExecutableCommand(std::string str,std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator, std::vector<std::string> v)> f);
     void setExecutor(Executor* exectr);
-    simp::cmd_status execute(sf::TcpSocket* sock, size_t iter, std::string[]);
+    simp::cmd_status execute(sf::TcpSocket* sock, size_t iter, std::vector<std::string>);
     std::string str();
 
 private:
     bool m_constructed = false;
-    std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator, std::string[])> fn;
+    std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator, std::vector<std::string>)> fn;
     std::string cmd;
 };
 /// \brief Accesses a command.
 /// \param std::string, std::function
-ExecutableCommand* getCommand(std::string str,std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator, std::string[])> f);
+ExecutableCommand* getCommand(std::string str,std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator, std::vector<std::string>)> f);
 
 
 

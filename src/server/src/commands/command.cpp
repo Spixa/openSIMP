@@ -1,7 +1,7 @@
 #include <server/commands/command.h>
 #include <server/commands/executor.h>
 
-ExecutableCommand::ExecutableCommand(std::string str,std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator, std::string args[])> f)
+ExecutableCommand::ExecutableCommand(std::string str,std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator, std::vector<std::string> args)> f)
     : m_constructed(true)
 {
     fn = f;
@@ -11,7 +11,7 @@ void ExecutableCommand::setExecutor(Executor* exectr) {
     assert(m_constructed == true);
     exectr->pushNewCommand(this);
 }
-simp::cmd_status ExecutableCommand::execute(sf::TcpSocket* sock, size_t iter, std::string args[]) {
+simp::cmd_status ExecutableCommand::execute(sf::TcpSocket* sock, size_t iter, std::vector<std::string> args) {
     return fn(sock, iter, args);
 }
 std::string ExecutableCommand::str() {
@@ -19,6 +19,6 @@ std::string ExecutableCommand::str() {
 }
 //////////////
 
-ExecutableCommand* getCommand(std::string str,std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator, std::string args[])> f) {
+ExecutableCommand* getCommand(std::string str,std::function<simp::cmd_status(sf::TcpSocket* sock, size_t iterator, std::vector<std::string> args)> f) {
     return new ExecutableCommand(str,f);
 }

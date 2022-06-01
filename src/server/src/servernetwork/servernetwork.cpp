@@ -13,6 +13,11 @@ void ServerNetwork::sendString(std::string str, sf::TcpSocket* client) {
     send(str.c_str(),str.length()+1, client);
 }
 
+void ServerNetwork::sendString(std::string str, size_t iterator) {
+    str = "6\x01" + str;
+    send(str.c_str(),str.length()+1, client_array[iterator]);
+}
+
 std::string ServerNetwork::convertToString(char* a, int size)
 {
     int i;
@@ -33,6 +38,27 @@ ServerNetwork* ServerNetwork::Get() {
         }
 
         return m_instance;  
+}
+
+template<typename T>
+int getIndex(std::vector<T> v, T K)
+{
+    auto it = find(v.begin(), v.end(), K);
+  
+    // If element was found
+    if (it != v.end()) 
+    {
+      
+        // calculating the index
+        // of K
+        int index = it - v.begin();
+        return index;
+    }
+    else {
+        // If the element is not
+        // present in the vector
+        return -1;
+    }
 }
 
 void ServerNetwork::init(unsigned short port) {
@@ -71,14 +97,33 @@ void ServerNetwork::init(unsigned short port) {
         return cmd_status::OK;
     })->setExecutor(cmd_executor);
 
-    getCommand("suicide",CommandLambda {
-        broadcastString(clientid_array[iterator] + " killed themselves.", sock->getRemoteAddress(), sock->getRemotePort());
-        disconnectClient(sock, iterator, DisconnectReason::DisconnectKick);
-        return cmd_status::OK;
-    })->setExecutor(cmd_executor);
 
     getCommand("plugins", CommandLambda {
         sendString("Plugins (0): ", sock);
+        return cmd_status::OK;
+    })->setExecutor(cmd_executor);
+
+    getCommand("msg", CommandLambda {
+        if (args[1] == "\x96") {
+            return cmd_status::ERROR;
+        }
+        if (args[1] == clientid_array[iterator]) {
+            sendString("You cannot send message to yourself", iterator);
+            return cmd_status::OK;
+        }
+
+        for (auto x : clientid_array) {
+            if (args[1] == x) {
+                std::string toSend{"[" + x + " -> " + clientid_array[iterator] + "]: "};
+                
+                for (unsigned long i = 0; i < args.size(); i++) {
+                    if (i > 1) {
+                        toSend += args[i] + ' ';
+                    }
+                }
+                sendString(toSend, getIndex(clientid_array, x));
+            }
+        }
         return cmd_status::OK;
     })->setExecutor(cmd_executor);
 
@@ -161,9 +206,17 @@ void ServerNetwork::disconnectClient(sf::TcpSocket* socket_pointer, size_t posit
     
     __logl(leaveMessage);
     // Add "2" to signify packet type as LeavePacket
-    leaveMessage = "2\x01" + leaveMessage; 
+    std::string broadcastMsg;
+    broadcastMsg = "2\x01" + clientid_array[position]; 
     // broadcasts leave message
-    broadcast(leaveMessage.c_str(),socket_pointer->getRemoteAddress(), socket_pointer->getRemotePort());
+    clientid_array.erase(clientid_array.begin() + position);
+    for (auto x : clientid_array) {
+        if (x != "\x96") {
+            broadcastMsg += "\x01" + x;
+        }
+    }
+
+    broadcast(broadcastMsg.c_str(),socket_pointer->getRemoteAddress(), socket_pointer->getRemotePort());
 
     if (client_authenticated_array[position] == AuthStatus::Done)
         crypt->removeClientKey(socket_pointer);
@@ -171,14 +224,10 @@ void ServerNetwork::disconnectClient(sf::TcpSocket* socket_pointer, size_t posit
     socket_pointer->disconnect();
     delete(socket_pointer);
 
- 
-
     client_array.erase(client_array.begin() + position);
-    clientid_array.erase(clientid_array.begin() + position);
     client_op_array.erase(client_op_array.begin() + position);
     client_authenticated_array.erase(client_authenticated_array.begin() + position);
     client_message_interval.erase(client_message_interval.begin() + position);
-
 
 }
 
@@ -269,8 +318,14 @@ void ServerNetwork::openUserdata()
 
 
     YAML::Node config;
-    if (std::filesystem::exists("userdata.yml"))
-        config = YAML::LoadFile("userdata.yml");
+    if (std::filesystem::exists("userdata.yml")) {
+        config = YAML::LoadFile("userdata.yml");    
+    } else {
+        __logl("userdata.yml not found: recreating file...");
+        std::ofstream saver;
+        saver.open("userdata.yml");
+        saver.close();
+    }
 }
 
 
@@ -355,7 +410,7 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
                 if (config[uname]) {
                     if (config[uname]["password"]) {
                         if (config[uname]["password"].as<std::string>() == passwd) {
-                            __logl(uname + "connected");
+                            __logl(uname + " connected");
                             if (!nick(uname, client, iterator)) return;
                         } else {
                             disconnectClient(client, iterator, DisconnectReason::DisconnectKick);
@@ -488,8 +543,18 @@ void ServerNetwork::receive(sf::TcpSocket* client, size_t iterator) {
     }
 }
 
+void ServerNetwork::broadcastList() {
+    std::string str = "\x07";
+    for (auto x : clientid_array) {
+        if (x != "\x96") {
+            str+=x + ' ';
+        }
+    }
+    broadcast(str.c_str(), sf::IpAddress(), 0); // broadcasts
+}
+
 void ServerNetwork::handleCommand(std::string  received_data,sf::TcpSocket* client, size_t iterator) {
-    received_data.erase(0, 2);
+    received_data.erase(0, 1);
     // if (strcmp(message,"list") == 0) {
     //     std::stringstream list_all;
     //     list_all << "5\x01\nList of online users: ";
@@ -581,13 +646,19 @@ bool ServerNetwork::nick(std::string received_data, sf::TcpSocket* client, size_
         return false;
     }
 
-
+    
     std::stringstream joinMessageStream;
-    joinMessageStream << "1\x01" << char_array << " connected.";
+    clientid_array[iterator] = received_data;
+    joinMessageStream << "1\x01" << char_array;
+    for (auto x : clientid_array) {
+        if (x != "\x96") {
+            joinMessageStream << "\x01" << x;
+        }
+    }
 
     broadcast(joinMessageStream.str().c_str(),client->getRemoteAddress(), client->getRemotePort()); 
     __logl(client->getRemoteAddress().toString() << ":" << std::to_string(client->getRemotePort()) << ": Remote entry is masked to " << received_data );
-    clientid_array[iterator] = received_data;
+    
 
     return true;
 }
@@ -602,24 +673,24 @@ bool ServerNetwork::handleNick(std::string received_data,sf::TcpSocket* client, 
 }   
 
 void ServerNetwork::handleRequestedConsole(sf::TcpSocket* sock,size_t iterpos) {
-    __log("op " << sock->getRemoteAddress().toString() << ":" << sock->getRemotePort() << " (AKA:" << clientid_array[iterpos] << "): Remote is requesting to become an operator. [Y/N]");
-    char say;
-    std::cin >> say;
-    switch (say) {
-        case 'Y' | 'y': 
-            __logl("Opped remote.");
-            client_op_array[iterpos] = true;
-        break;
-        case 'N' | 'n':
-            __logl("Denied");
-            return;
-        break;
-        default:
-            __logl("wrong input.");
-            return;
-    }      
+    // __log("op " << sock->getRemoteAddress().toString() << ":" << sock->getRemotePort() << " (AKA:" << clientid_array[iterpos] << "): Remote is requesting to become an operator. [Y/N]");
+    // char say;
+    // std::cin >> say;
+    // switch (say) {
+    //     case 'Y' | 'y': 
+    //         __logl("Opped remote.");
+    //         client_op_array[iterpos] = true;
+    //     break;
+    //     case 'N' | 'n':
+    //         __logl("Denied");
+    //         return;
+    //     break;
+    //     default:
+    //         __logl("wrong input.");
+    //         return;
+    // }      
 
-
+    return;
 }
 
 void ServerNetwork::updateObjs() {

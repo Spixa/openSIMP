@@ -18,6 +18,7 @@ void ClientNetwork::connect(const char* address, unsigned short port) {
 }
 
 
+
 void ClientNetwork::receive(sf::TcpSocket* socket) {
     while (true) {
         sf::Socket::Status status = socket->receive(buffer,sizeof(buffer),received);
@@ -40,14 +41,19 @@ void ClientNetwork::receive(sf::TcpSocket* socket) {
             //     }
             // }
             // logl('\n' << counter << " receivees in total.");
-            std::string args[5];
+            std::string args[100];
             Utils::lexer(pt, args, '\x01');
 
             if (args[0] == "0") {
                 logl("<" << args[2] << "> " << args[1]);
             } else
             if (args[0] == "1" || args[0] == "2") {
-                logl(args[1]);
+                logl(args[1] + ((args[0] == "1") ? " joined" : " left"));
+                log("List: ");
+                for (int i = 2; i < 100; i++) {
+                    log(args[i] + " ");
+                }
+                logl("");
             }  else
             if (args[0] == "5") {
                 logl("(Command) " + args[1]);
@@ -97,14 +103,8 @@ void ClientNetwork::handshake(const std::string& UNAME, const std::string& PASSW
                 std::string server_key_str_enc{vec.begin(), vec.end()};
 
                 status = HandshakeStatus::ReceivedAESKey;
-
-    
-                    auto v= crypt->RSA_decrypt(vec);
-                    aes_key = std::string{v.begin(), v.end()};
-                
-
-
-                
+                auto v= crypt->RSA_decrypt(vec);
+                aes_key = std::string{v.begin(), v.end()};
             
                 std::cout << std::endl;
                 hasHandshook = true;
